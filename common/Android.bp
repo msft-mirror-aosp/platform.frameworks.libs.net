@@ -45,10 +45,11 @@ java_library {
   ],
   visibility: [
         "//frameworks/base/packages/Tethering",
+        "//packages/modules/Connectivity/Tethering",
         "//frameworks/opt/net/ike",
         "//frameworks/opt/net/wifi/service",
         "//frameworks/opt/net/telephony",
-        "//packages/modules/NetworkStack",
+        "//packages/modules/NetworkStack:__subpackages__",
         "//packages/modules/CaptivePortalLogin",
         "//frameworks/libs/net/common/tests:__subpackages__",
   ],
@@ -123,19 +124,33 @@ java_library {
     jarjar_rules: "jarjar-rules-shared.txt",
     visibility: [
         "//cts/tests/tests/net",
+        "//packages/modules/Connectivity/tests/cts/net",
         "//frameworks/base/packages/Tethering",
+        "//packages/modules/Connectivity/Tethering",
+        "//frameworks/base/tests:__subpackages__",
         "//frameworks/opt/net/ike",
         "//frameworks/opt/telephony",
+        "//frameworks/base/wifi:__subpackages__",
         "//packages/modules/NetworkStack:__subpackages__",
         "//packages/modules/CaptivePortalLogin",
         "//frameworks/libs/net/common/tests:__subpackages__",
     ]
 }
 
+filegroup {
+    name: "net-utils-services-common-srcs",
+    srcs: [
+        "device/android/net/NetworkFactory.java",
+    ],
+    visibility: [
+        "//frameworks/base/services/net",
+    ],
+}
+
 java_library {
     name: "net-utils-services-common",
     srcs: [
-        "device/android/net/NetworkFactory.java",
+        ":net-utils-services-common-srcs",
         ":framework-annotations",
     ],
     sdk_version: "system_current",
