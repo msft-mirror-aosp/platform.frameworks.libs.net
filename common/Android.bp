@@ -48,7 +48,10 @@ java_library {
         "//packages/modules/Connectivity/Tethering",
         "//frameworks/opt/net/ike",
         "//frameworks/opt/net/wifi/service",
+        "//packages/modules/Wifi/service",
         "//frameworks/opt/net/telephony",
+        "//frameworks/base/packages/Connectivity:__subpackages__",
+        "//packages/modules/Connectivity:__subpackages__",
         "//packages/modules/NetworkStack:__subpackages__",
         "//packages/modules/CaptivePortalLogin",
         "//frameworks/libs/net/common/tests:__subpackages__",
@@ -133,9 +136,12 @@ java_library {
         "//frameworks/opt/net/ike",
         "//frameworks/opt/telephony",
         "//frameworks/base/wifi:__subpackages__",
+        "//frameworks/base/packages/Connectivity:__subpackages__",
+        "//packages/modules/Connectivity:__subpackages__",
         "//packages/modules/NetworkStack:__subpackages__",
         "//packages/modules/CaptivePortalLogin",
         "//frameworks/libs/net/common/tests:__subpackages__",
+        "//packages/modules/Wifi/framework/tests:__subpackages__",
     ]
 }
 
@@ -200,5 +206,6 @@ filegroup {
     ],
     visibility: [
         "//frameworks/opt/net/wifi/service",
+        "//packages/modules/Wifi/service",
     ],
 }
