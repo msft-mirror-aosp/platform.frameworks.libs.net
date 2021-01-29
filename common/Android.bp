@@ -45,10 +45,14 @@ java_library {
   ],
   visibility: [
         "//frameworks/base/packages/Tethering",
+        "//packages/modules/Connectivity/Tethering",
         "//frameworks/opt/net/ike",
         "//frameworks/opt/net/wifi/service",
+        "//packages/modules/Wifi/service",
         "//frameworks/opt/net/telephony",
-        "//packages/modules/NetworkStack",
+        "//frameworks/base/packages/Connectivity:__subpackages__",
+        "//packages/modules/Connectivity:__subpackages__",
+        "//packages/modules/NetworkStack:__subpackages__",
         "//packages/modules/CaptivePortalLogin",
         "//frameworks/libs/net/common/tests:__subpackages__",
   ],
@@ -98,6 +102,7 @@ java_library {
     ],
     static_libs: [
         "androidx.test.ext.junit",
+        "kotlin-reflect",
         "libnanohttpd",
         "net-tests-utils-host-device-common",
         "net-utils-device-common",
@@ -123,20 +128,37 @@ java_library {
     jarjar_rules: "jarjar-rules-shared.txt",
     visibility: [
         "//cts/tests/tests/net",
+        "//cts/tests/tests/wifi",
+        "//packages/modules/Connectivity/tests/cts/net",
         "//frameworks/base/packages/Tethering",
+        "//packages/modules/Connectivity/Tethering",
+        "//frameworks/base/tests:__subpackages__",
         "//frameworks/opt/net/ike",
         "//frameworks/opt/telephony",
         "//frameworks/base/wifi:__subpackages__",
+        "//frameworks/base/packages/Connectivity:__subpackages__",
+        "//packages/modules/Connectivity:__subpackages__",
         "//packages/modules/NetworkStack:__subpackages__",
         "//packages/modules/CaptivePortalLogin",
         "//frameworks/libs/net/common/tests:__subpackages__",
+        "//packages/modules/Wifi/framework/tests:__subpackages__",
     ]
+}
+
+filegroup {
+    name: "net-utils-services-common-srcs",
+    srcs: [
+        "device/android/net/NetworkFactory.java",
+    ],
+    visibility: [
+        "//frameworks/base/services/net",
+    ],
 }
 
 java_library {
     name: "net-utils-services-common",
     srcs: [
-        "device/android/net/NetworkFactory.java",
+        ":net-utils-services-common-srcs",
         ":framework-annotations",
     ],
     sdk_version: "system_current",
@@ -165,8 +187,6 @@ filegroup {
 filegroup {
     name: "net-utils-framework-wifi-common-srcs",
     srcs: [
-        "framework/android/net/util/nsd/DnsSdTxtRecord.java",
-        "framework/android/net/util/MacAddressUtils.java",
         "framework/com/android/net/module/util/**/*.java",
     ],
     path: "framework",
@@ -182,9 +202,10 @@ filegroup {
     name: "net-utils-wifi-service-common-srcs",
     srcs: [
        "device/android/net/NetworkFactory.java",
-       "framework/android/net/util/NetUtils.java",
+       "framework/com/android/net/module/util/NetUtils.java",
     ],
     visibility: [
         "//frameworks/opt/net/wifi/service",
+        "//packages/modules/Wifi/service",
     ],
 }
