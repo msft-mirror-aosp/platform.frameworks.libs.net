@@ -9,6 +9,7 @@ android_library {
     static_libs: [
         "net-utils-framework-common",
         "androidx.test.rules",
+        "mockito-target-extended-minus-junit4",
         "net-utils-device-common",
         "net-tests-utils-host-device-common",
     ],
@@ -16,7 +17,6 @@ android_library {
         "android.test.runner",
         "android.test.base",
     ],
-    jarjar_rules: "jarjar-rules-sharedlib.txt",
     visibility: [
         "//frameworks/base/packages/Tethering/tests/integration",
         "//packages/modules/Connectivity/Tethering/tests/integration",
@@ -29,6 +29,11 @@ android_test {
     certificate: "platform",
     static_libs: [
         "NetworkStaticLibTestsLib",
+    ],
+    jni_libs: [
+        // For mockito extended
+        "libdexmakerjvmtiagent",
+        "libstaticjvmtiagent",
     ],
     jarjar_rules: "jarjar-rules.txt",
     test_suites: ["device-tests"],
