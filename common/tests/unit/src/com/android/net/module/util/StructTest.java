@@ -20,8 +20,11 @@ import static com.android.testutils.MiscAsserts.assertThrows;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
+import android.net.InetAddresses;
 import android.net.IpPrefix;
 import android.net.MacAddress;
 
@@ -36,6 +39,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.math.BigInteger;
+import java.net.Inet4Address;
+import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
@@ -67,6 +72,15 @@ public class StructTest {
 
     // PREF64 option, 2001:db8:3:4:5:6::/96, lifetime: 10064
     private static final String OPT_PREF64 = "2750" + "20010db80003000400050006";
+    private static final byte[] TEST_PREFIX64 = new byte[]{
+            (byte) 0x20, (byte) 0x01, (byte) 0x0d, (byte) 0xb8, (byte) 0x00, (byte) 0x03,
+            (byte) 0x00, (byte) 0x04, (byte) 0x00, (byte) 0x05, (byte) 0x00, (byte) 0x06,
+    };
+
+    private static final Inet4Address TEST_IPV4_ADDRESS =
+            (Inet4Address) InetAddresses.parseNumericAddress("192.168.100.1");
+    private static final Inet6Address TEST_IPV6_ADDRESS =
+            (Inet6Address) InetAddresses.parseNumericAddress("2001:db8:3:4:5:6:7:8");
 
     private <T> T doParsingMessageTest(final String hexString, final Class<T> clazz,
             final ByteOrder order) {
@@ -699,7 +713,7 @@ public class StructTest {
     }
 
     @Test
-    public void testStructToByteArray() {
+    public void testStructToByteArrayRoundTrip() {
         final SignedDataMessage littleEndianMsg = doParsingMessageTest(SIGNED_DATA,
                 SignedDataMessage.class, ByteOrder.LITTLE_ENDIAN);
         assertArrayEquals(toByteBuffer(SIGNED_DATA).array(),
@@ -714,6 +728,303 @@ public class StructTest {
                 ByteOrder.LITTLE_ENDIAN) ? littleEndianMsg : bigEndianMsg;
         assertArrayEquals(toByteBuffer(SIGNED_DATA).array(),
                 nativeOrderMsg.writeToBytes());
+    }
 
+    @Test
+    public void testStructToByteArray() {
+        final SignedDataMessage msg = new SignedDataMessage((byte) -5, (short) 42, (int) 0xff000004,
+                (long) 0xff000004ff000005L);
+        final String leHexString = "fb" + "2a00" + "040000ff" + "050000ff040000ff";
+        final String beHexString = "fb" + "002a" + "ff000004" + "ff000004ff000005";
+        final String hexString = ByteOrder.nativeOrder().equals(ByteOrder.LITTLE_ENDIAN)
+                ? leHexString : beHexString;
+        assertArrayEquals(toByteBuffer(hexString).array(), msg.writeToBytes());
+    }
+
+    static class IpAddressMessage extends Struct {
+        @Field(order = 0, type = Type.Ipv4Address) public final Inet4Address ipv4Address;
+        @Field(order = 1, type = Type.Ipv6Address) public final Inet6Address ipv6Address;
+
+        IpAddressMessage(final Inet4Address ipv4Address, final Inet6Address ipv6Address) {
+            this.ipv4Address = ipv4Address;
+            this.ipv6Address = ipv6Address;
+        }
+    }
+
+    @Test
+    public void testIpAddressType() {
+        final IpAddressMessage msg = doParsingMessageTest("c0a86401"
+                + "20010db8000300040005000600070008", IpAddressMessage.class, ByteOrder.BIG_ENDIAN);
+
+        assertEquals(TEST_IPV4_ADDRESS, msg.ipv4Address);
+        assertEquals(TEST_IPV6_ADDRESS, msg.ipv6Address);
+
+        assertEquals(20, Struct.getSize(IpAddressMessage.class));
+        assertArrayEquals(toByteBuffer("c0a86401" + "20010db8000300040005000600070008").array(),
+                msg.writeToBytes(ByteOrder.BIG_ENDIAN));
+    }
+
+    static class WrongIpAddressType extends Struct {
+        @Field(order = 0, type = Type.Ipv4Address) public byte[] ipv4Address;
+        @Field(order = 1, type = Type.Ipv6Address) public byte[] ipv6Address;
+    }
+
+    @Test
+    public void testIncorrectType_IpAddressWithByteArray() {
+        assertThrows(IllegalArgumentException.class,
+                () -> Struct.parse(WrongIpAddressType.class,
+                                   toByteBuffer("c0a86401" + "20010db8000300040005000600070008")));
+    }
+
+    static class FullTypeMessage extends Struct {
+        @Field(order = 0, type = Type.U8) public final short u8;
+        @Field(order = 1, type = Type.U16) public final int u16;
+        @Field(order = 2, type = Type.U32) public final long u32;
+        @Field(order = 3, type = Type.U63) public final long u63;
+        @Field(order = 4, type = Type.U64) public final BigInteger u64;
+        @Field(order = 5, type = Type.S8) public final byte s8;
+        @Field(order = 6, type = Type.S16) public final short s16;
+        @Field(order = 7, type = Type.S32) public final int s32;
+        @Field(order = 8, type = Type.S64) public final long s64;
+        @Field(order = 9, type = Type.UBE16) public final int ube16;
+        @Field(order = 10, type = Type.UBE32) public final long ube32;
+        @Field(order = 11, type = Type.UBE63) public final long ube63;
+        @Field(order = 12, type = Type.UBE64) public final BigInteger ube64;
+        @Field(order = 13, type = Type.ByteArray, arraysize = 12) public final byte[] bytes;
+        @Field(order = 14, type = Type.EUI48) public final MacAddress eui48;
+        @Field(order = 15, type = Type.Ipv4Address) public final Inet4Address ipv4Address;
+        @Field(order = 16, type = Type.Ipv6Address) public final Inet6Address ipv6Address;
+
+        FullTypeMessage(final short u8, final int u16, final long u32, final long u63,
+                final BigInteger u64, final byte s8, final short s16, final int s32, final long s64,
+                final int ube16, final long ube32, final long ube63, final BigInteger ube64,
+                final byte[] bytes, final MacAddress eui48, final Inet4Address ipv4Address,
+                final Inet6Address ipv6Address) {
+            this.u8 = u8;
+            this.u16 = u16;
+            this.u32 = u32;
+            this.u63 = u63;
+            this.u64 = u64;
+            this.s8 = s8;
+            this.s16 = s16;
+            this.s32 = s32;
+            this.s64 = s64;
+            this.ube16 = ube16;
+            this.ube32 = ube32;
+            this.ube63 = ube63;
+            this.ube64 = ube64;
+            this.bytes = bytes;
+            this.eui48 = eui48;
+            this.ipv4Address = ipv4Address;
+            this.ipv6Address = ipv6Address;
+        }
+    }
+
+    private static final String FULL_TYPE_DATA = "ff" + "ffff" + "ffffffff" + "7fffffffffffffff"
+            + "ffffffffffffffff" + "7f" + "7fff" + "7fffffff" + "7fffffffffffffff" + "7fff"
+            + "7fffffff" + "7fffffffffffffff" + "ffffffffffffffff" + "20010db80003000400050006"
+            + "001122334455" + "c0a86401" + "20010db8000300040005000600070008";
+    private static final String FULL_TYPE_DATA_DIFF_MAC = "ff" + "ffff" + "ffffffff"
+            + "7fffffffffffffff" + "ffffffffffffffff" + "7f" + "7fff" + "7fffffff"
+            + "7fffffffffffffff" + "7fff" + "7fffffff" + "7fffffffffffffff" + "ffffffffffffffff"
+            + "20010db80003000400050006" + "112233445566"
+            + "c0a86401" + "20010db8000300040005000600070008";
+    private static final String FULL_TYPE_DATA_DIFF_LONG = "ff" + "ffff" + "ffffffff"
+            + "7ffffffffffffffe" + "ffffffffffffffff" + "7f" + "7fff" + "7fffffff"
+            + "7fffffffffffffff" + "7fff" + "7fffffff" + "7fffffffffffffff" + "ffffffffffffffff"
+            + "20010db80003000400050006" + "001122334455"
+            + "c0a86401" + "20010db8000300040005000600070008";
+    private static final String FULL_TYPE_DATA_DIFF_INTEGER = "ff" + "ffff" + "ffffffff"
+            + "7fffffffffffffff" + "ffffffffffffffff" + "7f" + "7fff" + "7fffffff"
+            + "7fffffffffffffff" + "7fff" + "ffffff7f" + "7fffffffffffffff" + "ffffffffffffffff"
+            + "20010db80003000400050006" + "001122334455"
+            + "c0a86401" + "20010db8000300040005000600070008";
+    private static final String FULL_TYPE_DATA_DIFF_IPV4 = "ff" + "ffff" + "ffffffff"
+            + "7fffffffffffffff" + "ffffffffffffffff" + "7f" + "7fff" + "7fffffff"
+            + "7fffffffffffffff" + "7fff" + "ffffff7f" + "7fffffffffffffff" + "ffffffffffffffff"
+            + "20010db80003000400050006" + "001122334455"
+            + "c0a81010" + "20010db8000300040005000600070008";
+    private static final String FULL_TYPE_DATA_DIFF_IPV6 = "ff" + "ffff" + "ffffffff"
+            + "7fffffffffffffff" + "ffffffffffffffff" + "7f" + "7fff" + "7fffffff"
+            + "7fffffffffffffff" + "7fff" + "ffffff7f" + "7fffffffffffffff" + "ffffffffffffffff"
+            + "20010db80003000400050006" + "001122334455"
+            + "c0a86401" + "20010db800030004000500060007000a";
+    @Test
+    public void testStructClass_equals() {
+        final FullTypeMessage msg = doParsingMessageTest(FULL_TYPE_DATA, FullTypeMessage.class,
+                ByteOrder.BIG_ENDIAN);
+
+        assertEquals(255, msg.u8);
+        assertEquals(65535, msg.u16);
+        assertEquals(4294967295L, msg.u32);
+        assertEquals(9223372036854775807L, msg.u63);
+        assertEquals(new BigInteger("18446744073709551615"), msg.u64);
+        assertEquals(127, msg.s8);
+        assertEquals(32767, msg.s16);
+        assertEquals(2147483647, msg.s32);
+        assertEquals(9223372036854775807L, msg.s64);
+        assertEquals(32767, msg.ube16);
+        assertEquals(2147483647, msg.ube32);
+        assertEquals(9223372036854775807L, msg.ube63);
+        assertEquals(new BigInteger("18446744073709551615"), msg.ube64);
+        assertArrayEquals(TEST_PREFIX64, msg.bytes);
+        assertEquals(MacAddress.fromString("00:11:22:33:44:55"), msg.eui48);
+        assertEquals(TEST_IPV4_ADDRESS, msg.ipv4Address);
+        assertEquals(TEST_IPV6_ADDRESS, msg.ipv6Address);
+
+        assertEquals(98, msg.getSize(FullTypeMessage.class));
+        assertArrayEquals(toByteBuffer(FULL_TYPE_DATA).array(),
+                msg.writeToBytes(ByteOrder.BIG_ENDIAN));
+
+        final FullTypeMessage msg1 = new FullTypeMessage((short) 0xff, (int) 0xffff,
+                (long) 0xffffffffL, (long) 0x7fffffffffffffffL,
+                new BigInteger("18446744073709551615"), (byte) 0x7f, (short) 0x7fff,
+                (int) 0x7fffffff, (long) 0x7fffffffffffffffL, (int) 0x7fff, (long) 0x7fffffffL,
+                (long) 0x7fffffffffffffffL, new BigInteger("18446744073709551615"), TEST_PREFIX64,
+                MacAddress.fromString("00:11:22:33:44:55"), TEST_IPV4_ADDRESS, TEST_IPV6_ADDRESS);
+        assertTrue(msg.equals(msg1));
+    }
+
+    static class FullTypeMessageWithDupType extends Struct {
+        @Field(order = 0, type = Type.U8) public final short u8;
+        @Field(order = 1, type = Type.U16) public final int u16;
+        @Field(order = 2, type = Type.U32) public final long u32;
+        @Field(order = 3, type = Type.S64) public final long u63; // old: U63, new: S64
+        @Field(order = 4, type = Type.UBE64) public final BigInteger u64; // old: U64, new: UBE64
+        @Field(order = 5, type = Type.S8) public final byte s8;
+        @Field(order = 6, type = Type.S16) public final short s16;
+        @Field(order = 7, type = Type.S32) public final int s32;
+        @Field(order = 8, type = Type.S64) public final long s64;
+        @Field(order = 9, type = Type.U16) public final int ube16; // old:UBE16, new: U16
+        @Field(order = 10, type = Type.UBE32) public final long ube32;
+        @Field(order = 11, type = Type.UBE63) public final long ube63;
+        @Field(order = 12, type = Type.UBE64) public final BigInteger ube64;
+        @Field(order = 13, type = Type.ByteArray, arraysize = 12) public final byte[] bytes;
+        @Field(order = 14, type = Type.EUI48) public final MacAddress eui48;
+        @Field(order = 15, type = Type.Ipv4Address) public final Inet4Address ipv4Address;
+        @Field(order = 16, type = Type.Ipv6Address) public final Inet6Address ipv6Address;
+
+        FullTypeMessageWithDupType(final short u8, final int u16, final long u32, final long u63,
+                final BigInteger u64, final byte s8, final short s16, final int s32, final long s64,
+                final int ube16, final long ube32, final long ube63, final BigInteger ube64,
+                final byte[] bytes, final MacAddress eui48, final Inet4Address ipv4Address,
+                final Inet6Address ipv6Address) {
+            this.u8 = u8;
+            this.u16 = u16;
+            this.u32 = u32;
+            this.u63 = u63;
+            this.u64 = u64;
+            this.s8 = s8;
+            this.s16 = s16;
+            this.s32 = s32;
+            this.s64 = s64;
+            this.ube16 = ube16;
+            this.ube32 = ube32;
+            this.ube63 = ube63;
+            this.ube64 = ube64;
+            this.bytes = bytes;
+            this.eui48 = eui48;
+            this.ipv4Address = ipv4Address;
+            this.ipv6Address = ipv6Address;
+        }
+    }
+
+    @Test
+    public void testStructClass_notEqualWithDifferentClass() {
+        final FullTypeMessage msg = doParsingMessageTest(FULL_TYPE_DATA, FullTypeMessage.class,
+                ByteOrder.BIG_ENDIAN);
+        final FullTypeMessageWithDupType msg1 = doParsingMessageTest(FULL_TYPE_DATA,
+                FullTypeMessageWithDupType.class, ByteOrder.BIG_ENDIAN);
+
+        assertFalse(msg.equals(msg1));
+    }
+
+    @Test
+    public void testStructClass_notEqualWithDifferentValue() {
+        final FullTypeMessage msg = doParsingMessageTest(FULL_TYPE_DATA, FullTypeMessage.class,
+                ByteOrder.BIG_ENDIAN);
+
+        // With different MAC address.
+        final FullTypeMessage msg1 = doParsingMessageTest(FULL_TYPE_DATA_DIFF_MAC,
+                FullTypeMessage.class, ByteOrder.BIG_ENDIAN);
+        assertNotEquals(msg.eui48, msg1.eui48);
+        assertFalse(msg.equals(msg1));
+
+        // With different byte array.
+        final FullTypeMessage msg2 = doParsingMessageTest(FULL_TYPE_DATA, FullTypeMessage.class,
+                ByteOrder.BIG_ENDIAN);
+        msg2.bytes[5] = (byte) 42; // change one byte in the array.
+        assertFalse(msg.equals(msg2));
+
+        // With different Long primitive.
+        final FullTypeMessage msg3 = doParsingMessageTest(FULL_TYPE_DATA_DIFF_LONG,
+                FullTypeMessage.class, ByteOrder.BIG_ENDIAN);
+        assertNotEquals(msg.u63, msg3.u63);
+        assertFalse(msg.equals(msg3));
+
+        // With different Integer primitive.
+        final FullTypeMessage msg4 = doParsingMessageTest(FULL_TYPE_DATA_DIFF_INTEGER,
+                FullTypeMessage.class, ByteOrder.BIG_ENDIAN);
+        assertNotEquals(msg.ube32, msg4.ube32);
+        assertFalse(msg.equals(msg4));
+
+        // With different IPv4 address.
+        final FullTypeMessage msg5 = doParsingMessageTest(FULL_TYPE_DATA_DIFF_IPV4,
+                FullTypeMessage.class, ByteOrder.BIG_ENDIAN);
+        assertNotEquals(msg.ipv4Address, msg5.ipv4Address);
+        assertFalse(msg.equals(msg5));
+
+        // With different IPv6 address.
+        final FullTypeMessage msg6 = doParsingMessageTest(FULL_TYPE_DATA_DIFF_IPV6,
+                FullTypeMessage.class, ByteOrder.BIG_ENDIAN);
+        assertNotEquals(msg.ipv6Address, msg6.ipv6Address);
+        assertFalse(msg.equals(msg6));
+    }
+
+    @Test
+    public void testStructClass_toString() {
+        final String expected = "u8: 255, u16: 65535, u32: 4294967295,"
+                + " u63: 9223372036854775807, u64: 18446744073709551615, s8: 127, s16: 32767,"
+                + " s32: 2147483647, s64: 9223372036854775807, ube16: 32767, ube32: 2147483647,"
+                + " ube63: 9223372036854775807, ube64: 18446744073709551615,"
+                + " bytes: 0x20010DB80003000400050006,"
+                + " eui48: 00:11:22:33:44:55,"
+                + " ipv4Address: 192.168.100.1,"
+                + " ipv6Address: 2001:db8:3:4:5:6:7:8";
+
+        final FullTypeMessage msg = doParsingMessageTest(FULL_TYPE_DATA, FullTypeMessage.class,
+                ByteOrder.BIG_ENDIAN);
+        assertEquals(expected, msg.toString());
+    }
+
+    @Test
+    public void testStructClass_toStringWithNullMember() {
+        final String expected = "u8: 255, u16: 65535, u32: 4294967295,"
+                + " u63: 9223372036854775807, u64: null, s8: 127, s16: 32767,"
+                + " s32: 2147483647, s64: 9223372036854775807, ube16: 32767, ube32: 2147483647,"
+                + " ube63: 9223372036854775807, ube64: 18446744073709551615,"
+                + " bytes: null, eui48: null, ipv4Address: 192.168.100.1,"
+                + " ipv6Address: null";
+
+        final FullTypeMessage msg = new FullTypeMessage((short) 0xff, (int) 0xffff,
+                (long) 0xffffffffL, (long) 0x7fffffffffffffffL,
+                null /* u64 */, (byte) 0x7f, (short) 0x7fff,
+                (int) 0x7fffffff, (long) 0x7fffffffffffffffL, (int) 0x7fff, (long) 0x7fffffffL,
+                (long) 0x7fffffffffffffffL, new BigInteger("18446744073709551615"),
+                null /* bytes */, null /* eui48 */, TEST_IPV4_ADDRESS, null /* ipv6Address */);
+        assertEquals(expected, msg.toString());
+    }
+
+    @Test
+    public void testStructClass_hashcode() {
+        final FullTypeMessage msg = doParsingMessageTest(FULL_TYPE_DATA, FullTypeMessage.class,
+                ByteOrder.BIG_ENDIAN);
+        final FullTypeMessage msg1 = doParsingMessageTest(FULL_TYPE_DATA, FullTypeMessage.class,
+                ByteOrder.BIG_ENDIAN);
+
+        assertNotEquals(0, msg.hashCode());
+        assertNotEquals(0, msg1.hashCode());
+        assertTrue(msg.equals(msg1));
+        assertEquals(msg.hashCode(), msg1.hashCode());
     }
 }
