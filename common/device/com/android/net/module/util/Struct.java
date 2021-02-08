@@ -27,9 +27,15 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
 import java.math.BigInteger;
+import java.net.Inet4Address;
+import java.net.Inet6Address;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.Arrays;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -97,21 +103,23 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class Struct {
     public enum Type {
-        U8,        // unsigned byte,  size = 1 byte
-        U16,       // unsigned short, size = 2 bytes
-        U32,       // unsigned int,   size = 4 bytes
-        U63,       // unsigned long(MSB: 0), size = 8 bytes
-        U64,       // unsigned long,  size = 8 bytes
-        S8,        // signed byte,    size = 1 byte
-        S16,       // signed short,   size = 2 bytes
-        S32,       // signed int,     size = 4 bytes
-        S64,       // signed long,    size = 8 bytes
-        UBE16,     // unsigned short in network order, size = 2 bytes
-        UBE32,     // unsigned int in network order,   size = 4 bytes
-        UBE63,     // unsigned long(MSB: 0) in network order, size = 8 bytes
-        UBE64,     // unsigned long in network order,  size = 8 bytes
-        ByteArray, // byte array with predefined length
-        EUI48,     // a 48-bits long MAC address
+        U8,          // unsigned byte,  size = 1 byte
+        U16,         // unsigned short, size = 2 bytes
+        U32,         // unsigned int,   size = 4 bytes
+        U63,         // unsigned long(MSB: 0), size = 8 bytes
+        U64,         // unsigned long,  size = 8 bytes
+        S8,          // signed byte,    size = 1 byte
+        S16,         // signed short,   size = 2 bytes
+        S32,         // signed int,     size = 4 bytes
+        S64,         // signed long,    size = 8 bytes
+        UBE16,       // unsigned short in network order, size = 2 bytes
+        UBE32,       // unsigned int in network order,   size = 4 bytes
+        UBE63,       // unsigned long(MSB: 0) in network order, size = 8 bytes
+        UBE64,       // unsigned long in network order,  size = 8 bytes
+        ByteArray,   // byte array with predefined length
+        EUI48,       // IEEE Extended Unique Identifier, a 48-bits long MAC address in network order
+        Ipv4Address, // IPv4 address in network order
+        Ipv6Address, // IPv6 address in network order
     }
 
     /**
@@ -184,6 +192,12 @@ public class Struct {
             case EUI48:
                 if (fieldType == MacAddress.class) return;
                 break;
+            case Ipv4Address:
+                if (fieldType == Inet4Address.class) return;
+                break;
+            case Ipv6Address:
+                if (fieldType == Inet6Address.class) return;
+                break;
             default:
                 throw new IllegalArgumentException("Unknown type" + annotation.type());
         }
@@ -220,6 +234,12 @@ public class Struct {
                 break;
             case EUI48:
                 length = 6;
+                break;
+            case Ipv4Address:
+                length = 4;
+                break;
+            case Ipv6Address:
+                length = 16;
                 break;
             default:
                 throw new IllegalArgumentException("Unknown type" + annotation.type());
@@ -386,6 +406,17 @@ public class Struct {
                 buf.get(macAddress);
                 value = MacAddress.fromBytes(macAddress);
                 break;
+            case Ipv4Address:
+            case Ipv6Address:
+                final boolean isIpv6 = (fieldInfo.annotation.type() == Type.Ipv6Address);
+                final byte[] address = new byte[isIpv6 ? 16 : 4];
+                buf.get(address);
+                try {
+                    value = InetAddress.getByAddress(address);
+                } catch (UnknownHostException e) {
+                    throw new IllegalArgumentException("illegal length of IP address", e);
+                }
+                break;
             default:
                 throw new IllegalArgumentException("Unknown type:" + fieldInfo.annotation.type());
         }
@@ -458,6 +489,11 @@ public class Struct {
             case EUI48:
                 final byte[] macAddress = ((MacAddress) value).toByteArray();
                 output.put(macAddress);
+                break;
+            case Ipv4Address:
+            case Ipv6Address:
+                final byte[] address = ((InetAddress) value).getAddress();
+                output.put(address);
                 break;
             default:
                 throw new IllegalArgumentException("Unknown type:" + fieldInfo.annotation.type());
@@ -606,5 +642,79 @@ public class Struct {
     /** Convert the parsed Struct subclass object to byte array with native order. */
     public final byte[] writeToBytes() {
         return writeToBytes(ByteOrder.nativeOrder());
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == null || this.getClass() != obj.getClass()) return false;
+
+        final FieldInfo[] fieldInfos = getClassFieldInfo(this.getClass());
+        for (int i = 0; i < fieldInfos.length; i++) {
+            try {
+                final Object value = fieldInfos[i].field.get(this);
+                final Object otherValue = fieldInfos[i].field.get(obj);
+
+                // Use Objects#deepEquals because the equals method on arrays does not check the
+                // contents of the array. The only difference between Objects#deepEquals and
+                // Objects#equals is that the former will call Arrays#deepEquals when comparing
+                // arrays. In turn, the only difference between Arrays#deepEquals is that it
+                // supports nested arrays. Struct does not currently support these, and if it did,
+                // Objects#deepEquals might be more correct.
+                if (!Objects.deepEquals(value, otherValue)) return false;
+            } catch (IllegalAccessException e) {
+                throw new IllegalStateException("Cannot access field: " + fieldInfos[i].field, e);
+            }
+        }
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        final FieldInfo[] fieldInfos = getClassFieldInfo(this.getClass());
+        final Object[] values = new Object[fieldInfos.length];
+        for (int i = 0; i < fieldInfos.length; i++) {
+            final Object value;
+            try {
+                value = fieldInfos[i].field.get(this);
+            } catch (IllegalAccessException e) {
+                throw new IllegalStateException("Cannot access field: " + fieldInfos[i].field, e);
+            }
+            // For byte array field, put the hash code generated based on the array content into
+            // the Object array instead of the reference to byte array, which might change and cause
+            // to get a different hash code even with the exact same elements.
+            if (fieldInfos[i].field.getType() == byte[].class) {
+                values[i] = Arrays.hashCode((byte[]) value);
+            } else {
+                values[i] = value;
+            }
+        }
+        return Objects.hash(values);
+    }
+
+    @Override
+    public String toString() {
+        final StringBuilder sb = new StringBuilder();
+        final FieldInfo[] fieldInfos = getClassFieldInfo(this.getClass());
+        for (int i = 0; i < fieldInfos.length; i++) {
+            sb.append(fieldInfos[i].field.getName()).append(": ");
+            final Object value;
+            try {
+                value = fieldInfos[i].field.get(this);
+            } catch (IllegalAccessException e) {
+                throw new IllegalStateException("Cannot access field: " + fieldInfos[i].field, e);
+            }
+            if (value == null) {
+                sb.append("null");
+            } else if (fieldInfos[i].annotation.type() == Type.ByteArray) {
+                sb.append("0x").append(HexDump.toHexString((byte[]) value));
+            } else if (fieldInfos[i].annotation.type() == Type.Ipv4Address
+                    || fieldInfos[i].annotation.type() == Type.Ipv6Address) {
+                sb.append(((InetAddress) value).getHostAddress());
+            } else {
+                sb.append(value.toString());
+            }
+            if (i != fieldInfos.length - 1) sb.append(", ");
+        }
+        return sb.toString();
     }
 }
