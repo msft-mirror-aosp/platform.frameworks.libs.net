@@ -1,44 +1,43 @@
-//########################################################################
-// Build NetworkStaticLibTests package
-//########################################################################
-
 package {
     default_applicable_licenses: ["Android-Apache-2.0"],
 }
 
 android_library {
-    name: "NetworkStaticLibTestsLib",
-    srcs: ["src/**/*.java","src/**/*.kt"],
+    name: "NetdStaticLibTestsLib",
+    srcs: [
+        "src/**/*.java",
+        "src/**/*.kt",
+    ],
     min_sdk_version: "29",
     static_libs: [
-        "net-utils-framework-common",
         "androidx.test.rules",
         "mockito-target-extended-minus-junit4",
-        "net-utils-device-common",
         "net-tests-utils-host-device-common",
+        "netd-client",
     ],
     libs: [
         "android.test.runner",
         "android.test.base",
     ],
     visibility: [
-        "//frameworks/base/packages/Tethering/tests/integration",
+        // Visible for Tethering and NetworkStack integration test and link NetdStaticLibTestsLib
+        // there, so that the tests under client-libs can also be run when running tethering and
+        // NetworkStack MTS.
         "//packages/modules/Connectivity/Tethering/tests/integration",
         "//packages/modules/NetworkStack/tests/integration",
     ]
 }
 
 android_test {
-    name: "NetworkStaticLibTests",
+    name: "NetdStaticLibTests",
     certificate: "platform",
     static_libs: [
-        "NetworkStaticLibTestsLib",
+        "NetdStaticLibTestsLib",
     ],
     jni_libs: [
         // For mockito extended
         "libdexmakerjvmtiagent",
         "libstaticjvmtiagent",
     ],
-    jarjar_rules: "jarjar-rules.txt",
     test_suites: ["device-tests"],
 }

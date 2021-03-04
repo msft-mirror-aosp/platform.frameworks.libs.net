@@ -16,7 +16,10 @@
 
 package com.android.net.module.util;
 
+import android.net.InetAddresses;
+
 import java.net.Inet4Address;
+import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
@@ -50,8 +53,6 @@ public final class NetworkStackConstants {
             (byte) 0xff, (byte) 0xff, (byte) 0xff,
             (byte) 0xff, (byte) 0xff, (byte) 0xff,
     };
-
-    public static final int DEFAULT_LINK_MTU = 1500;
 
     /**
      * ARP constants.
@@ -98,7 +99,11 @@ public final class NetworkStackConstants {
             (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff);
     public static final Inet4Address IPV4_ADDR_ANY = makeInet4Address(
             (byte) 0, (byte) 0, (byte) 0, (byte) 0);
-
+    public static final Inet6Address IPV6_ADDR_ANY = makeInet6Address(new byte[]{
+            (byte) 0, (byte) 0, (byte) 0, (byte) 0,
+            (byte) 0, (byte) 0, (byte) 0, (byte) 0,
+            (byte) 0, (byte) 0, (byte) 0, (byte) 0,
+            (byte) 0, (byte) 0, (byte) 0, (byte) 0 });
     /**
      * IPv6 constants.
      *
@@ -112,6 +117,12 @@ public final class NetworkStackConstants {
     public static final int IPV6_SRC_ADDR_OFFSET = 8;
     public static final int IPV6_DST_ADDR_OFFSET = 24;
     public static final int IPV6_MIN_MTU = 1280;
+    public static final Inet6Address IPV6_ADDR_ALL_NODES_MULTICAST =
+            (Inet6Address) InetAddresses.parseNumericAddress("ff02::1");
+    public static final Inet6Address IPV6_ADDR_ALL_ROUTERS_MULTICAST =
+            (Inet6Address) InetAddresses.parseNumericAddress("ff02::2");
+    public static final Inet6Address IPV6_ADDR_ALL_HOSTS_MULTICAST =
+            (Inet6Address) InetAddresses.parseNumericAddress("ff02::3");
 
     /**
      * ICMPv6 constants.
@@ -182,6 +193,16 @@ public final class NetworkStackConstants {
         }
     }
 
+    /**
+     * Make an Inet6Address from 16 bytes in network byte order.
+     */
+    private static Inet6Address makeInet6Address(byte[] bytes) {
+        try {
+            return (Inet6Address) InetAddress.getByAddress(bytes);
+        } catch (UnknownHostException e) {
+            throw new IllegalArgumentException("addr must be 16 bytes: this should never happen");
+        }
+    }
     private NetworkStackConstants() {
         throw new UnsupportedOperationException("This class is not to be instantiated");
     }
