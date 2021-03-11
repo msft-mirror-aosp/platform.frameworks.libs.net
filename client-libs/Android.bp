@@ -1,3 +1,7 @@
+package {
+    default_applicable_licenses: ["Android-Apache-2.0"],
+}
+
 java_library {
     name: "netd-client",
     srcs: ["netd/**/*"],
@@ -15,7 +19,7 @@ java_library {
     ],
     libs: ["androidx.annotation_annotation"],
     static_libs: [
-        "netd_aidl_interface-java",
-        "netd_event_listener_interface-java"
+        "netd_aidl_interface-lateststable-java",
+        "netd_event_listener_interface-lateststable-java"
     ]
 }
