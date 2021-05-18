@@ -16,6 +16,8 @@
 
 package com.android.net.module.util;
 
+import android.net.InetAddresses;
+
 import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
@@ -51,8 +53,6 @@ public final class NetworkStackConstants {
             (byte) 0xff, (byte) 0xff, (byte) 0xff,
             (byte) 0xff, (byte) 0xff, (byte) 0xff,
     };
-
-    public static final int DEFAULT_LINK_MTU = 1500;
 
     /**
      * ARP constants.
@@ -117,6 +117,12 @@ public final class NetworkStackConstants {
     public static final int IPV6_SRC_ADDR_OFFSET = 8;
     public static final int IPV6_DST_ADDR_OFFSET = 24;
     public static final int IPV6_MIN_MTU = 1280;
+    public static final Inet6Address IPV6_ADDR_ALL_NODES_MULTICAST =
+            (Inet6Address) InetAddresses.parseNumericAddress("ff02::1");
+    public static final Inet6Address IPV6_ADDR_ALL_ROUTERS_MULTICAST =
+            (Inet6Address) InetAddresses.parseNumericAddress("ff02::2");
+    public static final Inet6Address IPV6_ADDR_ALL_HOSTS_MULTICAST =
+            (Inet6Address) InetAddresses.parseNumericAddress("ff02::3");
 
     /**
      * ICMPv6 constants.
@@ -142,8 +148,17 @@ public final class NetworkStackConstants {
     public static final int ICMPV6_ND_OPTION_RDNSS = 25;
     public static final int ICMPV6_ND_OPTION_PREF64 = 38;
 
-
     public static final int ICMPV6_RA_HEADER_LEN = 16;
+
+    public static final int NEIGHBOR_ADVERTISEMENT_FLAG_ROUTER    = 1 << 31;
+    public static final int NEIGHBOR_ADVERTISEMENT_FLAG_SOLICITED = 1 << 30;
+    public static final int NEIGHBOR_ADVERTISEMENT_FLAG_OVERRIDE  = 1 << 29;
+
+    public static final byte ROUTER_ADVERTISEMENT_FLAG_MANAGED_ADDRESS = (byte) (1 << 7);
+    public static final byte ROUTER_ADVERTISEMENT_FLAG_OTHER = (byte) (1 << 6);
+
+    public static final byte PIO_FLAG_ON_LINK = (byte) (1 << 7);
+    public static final byte PIO_FLAG_AUTONOMOUS = (byte) (1 << 6);
 
     /**
      * UDP constants.
@@ -170,6 +185,27 @@ public final class NetworkStackConstants {
      *     - https://ieeexplore.ieee.org/document/7786995
      */
     public static final int VENDOR_SPECIFIC_IE_ID = 0xdd;
+
+
+    /**
+     * TrafficStats constants.
+     */
+    // These tags are used by the network stack to do traffic for its own purposes. Traffic
+    // tagged with these will be counted toward the network stack and must stay inside the
+    // range defined by
+    // {@link android.net.TrafficStats#TAG_NETWORK_STACK_RANGE_START} and
+    // {@link android.net.TrafficStats#TAG_NETWORK_STACK_RANGE_END}.
+    public static final int TAG_SYSTEM_DHCP = 0xFFFFFE01;
+    public static final int TAG_SYSTEM_NEIGHBOR = 0xFFFFFE02;
+    public static final int TAG_SYSTEM_DHCP_SERVER = 0xFFFFFE03;
+
+    // These tags are used by the network stack to do traffic on behalf of apps. Traffic
+    // tagged with these will be counted toward the app on behalf of which the network
+    // stack is doing this traffic. These values must stay inside the range defined by
+    // {@link android.net.TrafficStats#TAG_NETWORK_STACK_IMPERSONATION_RANGE_START} and
+    // {@link android.net.TrafficStats#TAG_NETWORK_STACK_IMPERSONATION_RANGE_END}.
+    public static final int TAG_SYSTEM_PROBE = 0xFFFFFF81;
+    public static final int TAG_SYSTEM_DNS = 0xFFFFFF82;
 
     // TODO: Move to Inet4AddressUtils
     // See aosp/1455936: NetworkStackConstants can't depend on it as it causes jarjar-related issues

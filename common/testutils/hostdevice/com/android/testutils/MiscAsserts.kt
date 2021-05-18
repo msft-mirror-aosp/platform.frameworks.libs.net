@@ -32,8 +32,16 @@ fun <T> assertEmpty(ts: Array<T>) = ts.size.let { len ->
     assertEquals(0, len, "Expected empty array, but length was $len")
 }
 
+fun <T> assertEmpty(ts: Collection<T>) = ts.size.let { len ->
+    assertEquals(0, len, "Expected empty collection, but length was $len")
+}
+
 fun <T> assertLength(expected: Int, got: Array<T>) = got.size.let { len ->
     assertEquals(expected, len, "Expected array of length $expected, but was $len for $got")
+}
+
+fun <T> assertLength(expected: Int, got: List<T>) = got.size.let { len ->
+    assertEquals(expected, len, "Expected list of length $expected, but was $len for $got")
 }
 
 // Bridge method to help write this in Java. If you're writing Kotlin, consider using
@@ -102,4 +110,12 @@ fun <T> assertFieldCountEquals(count: Int, clazz: Class<T>) {
     assertEquals(count, clazz.declaredFields.filter {
         !Modifier.isStatic(it.modifiers) && !Modifier.isTransient(it.modifiers)
     }.size)
+}
+
+fun <T> assertSameElements(expected: List<T>, actual: List<T>) {
+    val expectedSet: HashSet<T> = HashSet(expected)
+    assertEquals(expectedSet.size, expected.size, "expected list contains duplicates")
+    val actualSet: HashSet<T> = HashSet(actual)
+    assertEquals(actualSet.size, actual.size, "actual list contains duplicates")
+    assertEquals(expectedSet, actualSet)
 }
