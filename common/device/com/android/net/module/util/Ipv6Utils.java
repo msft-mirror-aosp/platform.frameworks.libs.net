@@ -20,7 +20,9 @@ import static android.system.OsConstants.IPPROTO_ICMPV6;
 
 import static com.android.net.module.util.IpUtils.icmpv6Checksum;
 import static com.android.net.module.util.NetworkStackConstants.ETHER_TYPE_IPV6;
+import static com.android.net.module.util.NetworkStackConstants.ICMPV6_ECHO_REQUEST_TYPE;
 import static com.android.net.module.util.NetworkStackConstants.ICMPV6_NEIGHBOR_ADVERTISEMENT;
+import static com.android.net.module.util.NetworkStackConstants.ICMPV6_NEIGHBOR_SOLICITATION;
 import static com.android.net.module.util.NetworkStackConstants.ICMPV6_ROUTER_ADVERTISEMENT;
 import static com.android.net.module.util.NetworkStackConstants.ICMPV6_ROUTER_SOLICITATION;
 
@@ -30,6 +32,7 @@ import com.android.net.module.util.structs.EthernetHeader;
 import com.android.net.module.util.structs.Icmpv6Header;
 import com.android.net.module.util.structs.Ipv6Header;
 import com.android.net.module.util.structs.NaHeader;
+import com.android.net.module.util.structs.NsHeader;
 import com.android.net.module.util.structs.RaHeader;
 import com.android.net.module.util.structs.RsHeader;
 
@@ -123,6 +126,19 @@ public class Ipv6Utils {
     }
 
     /**
+     * Build an ICMPv6 Neighbor Solicitation packet from the required specified parameters.
+     */
+    public static ByteBuffer buildNsPacket(final MacAddress srcMac, final MacAddress dstMac,
+            final Inet6Address srcIp, final Inet6Address dstIp,
+            final Inet6Address target, final ByteBuffer... options) {
+        final NsHeader nsHeader = new NsHeader(target);
+        final ByteBuffer[] payload = buildIcmpv6Payload(
+                ByteBuffer.wrap(nsHeader.writeToBytes(ByteOrder.BIG_ENDIAN)), options);
+        return buildIcmpv6Packet(srcMac, dstMac, srcIp, dstIp,
+                (byte) ICMPV6_NEIGHBOR_SOLICITATION /* type */, (byte) 0 /* code */, payload);
+    }
+
+    /**
      * Build an ICMPv6 Router Solicitation packet from the required specified parameters.
      */
     public static ByteBuffer buildRsPacket(final MacAddress srcMac, final MacAddress dstMac,
@@ -132,5 +148,15 @@ public class Ipv6Utils {
                 ByteBuffer.wrap(rsHeader.writeToBytes(ByteOrder.BIG_ENDIAN)), options);
         return buildIcmpv6Packet(srcMac, dstMac, srcIp, dstIp,
                 (byte) ICMPV6_ROUTER_SOLICITATION /* type */, (byte) 0 /* code */, payload);
+    }
+
+    /**
+     * Build an ICMPv6 Echo Request packet from the required specified parameters.
+     */
+    public static ByteBuffer buildEchoRequestPacket(final MacAddress srcMac,
+            final MacAddress dstMac, final Inet6Address srcIp, final Inet6Address dstIp) {
+        final ByteBuffer payload = ByteBuffer.allocate(4); // ID and Sequence number may be zero.
+        return buildIcmpv6Packet(srcMac, dstMac, srcIp, dstIp,
+                (byte) ICMPV6_ECHO_REQUEST_TYPE /* type */, (byte) 0 /* code */, payload);
     }
 }

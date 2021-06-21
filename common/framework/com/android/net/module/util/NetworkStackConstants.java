@@ -148,7 +148,10 @@ public final class NetworkStackConstants {
     public static final int ICMPV6_ND_OPTION_RDNSS = 25;
     public static final int ICMPV6_ND_OPTION_PREF64 = 38;
 
+    public static final int ICMPV6_RS_HEADER_LEN = 8;
     public static final int ICMPV6_RA_HEADER_LEN = 16;
+    public static final int ICMPV6_NS_HEADER_LEN = 24;
+    public static final int ICMPV6_NA_HEADER_LEN = 24;
 
     public static final int NEIGHBOR_ADVERTISEMENT_FLAG_ROUTER    = 1 << 31;
     public static final int NEIGHBOR_ADVERTISEMENT_FLAG_SOLICITED = 1 << 30;
@@ -185,6 +188,27 @@ public final class NetworkStackConstants {
      *     - https://ieeexplore.ieee.org/document/7786995
      */
     public static final int VENDOR_SPECIFIC_IE_ID = 0xdd;
+
+
+    /**
+     * TrafficStats constants.
+     */
+    // These tags are used by the network stack to do traffic for its own purposes. Traffic
+    // tagged with these will be counted toward the network stack and must stay inside the
+    // range defined by
+    // {@link android.net.TrafficStats#TAG_NETWORK_STACK_RANGE_START} and
+    // {@link android.net.TrafficStats#TAG_NETWORK_STACK_RANGE_END}.
+    public static final int TAG_SYSTEM_DHCP = 0xFFFFFE01;
+    public static final int TAG_SYSTEM_NEIGHBOR = 0xFFFFFE02;
+    public static final int TAG_SYSTEM_DHCP_SERVER = 0xFFFFFE03;
+
+    // These tags are used by the network stack to do traffic on behalf of apps. Traffic
+    // tagged with these will be counted toward the app on behalf of which the network
+    // stack is doing this traffic. These values must stay inside the range defined by
+    // {@link android.net.TrafficStats#TAG_NETWORK_STACK_IMPERSONATION_RANGE_START} and
+    // {@link android.net.TrafficStats#TAG_NETWORK_STACK_IMPERSONATION_RANGE_END}.
+    public static final int TAG_SYSTEM_PROBE = 0xFFFFFF81;
+    public static final int TAG_SYSTEM_DNS = 0xFFFFFF82;
 
     // TODO: Move to Inet4AddressUtils
     // See aosp/1455936: NetworkStackConstants can't depend on it as it causes jarjar-related issues

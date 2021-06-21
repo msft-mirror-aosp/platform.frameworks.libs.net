@@ -32,8 +32,8 @@ fun <T> assertEmpty(ts: Array<T>) = ts.size.let { len ->
     assertEquals(0, len, "Expected empty array, but length was $len")
 }
 
-fun <T> assertEmpty(ts: List<T>) = ts.size.let { len ->
-    assertEquals(0, len, "Expected empty list, but length was $len")
+fun <T> assertEmpty(ts: Collection<T>) = ts.size.let { len ->
+    assertEquals(0, len, "Expected empty collection, but length was $len")
 }
 
 fun <T> assertLength(expected: Int, got: Array<T>) = got.size.let { len ->
@@ -112,11 +112,10 @@ fun <T> assertFieldCountEquals(count: Int, clazz: Class<T>) {
     }.size)
 }
 
-fun assertSameElements(expected: List<String?>, actual: List<String?>) {
-    val expectedSet: HashSet<String?> = HashSet<String?>(expected)
-    assertEquals(expectedSet.size.toLong(), expected.size.toLong(),
-            "expected list contains duplicates")
-    val actualSet: HashSet<String?> = HashSet<String?>(actual)
-    assertEquals(actualSet.size.toLong(), actual.size.toLong(), "actual list contains duplicates")
+fun <T> assertSameElements(expected: List<T>, actual: List<T>) {
+    val expectedSet: HashSet<T> = HashSet(expected)
+    assertEquals(expectedSet.size, expected.size, "expected list contains duplicates")
+    val actualSet: HashSet<T> = HashSet(actual)
+    assertEquals(actualSet.size, actual.size, "actual list contains duplicates")
     assertEquals(expectedSet, actualSet)
 }
