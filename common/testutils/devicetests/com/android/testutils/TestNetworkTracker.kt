@@ -23,10 +23,10 @@ import android.net.LinkAddress
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
-import android.net.StringNetworkSpecifier
 import android.net.TestNetworkInterface
 import android.net.TestNetworkManager
 import android.os.Binder
+import com.android.modules.utils.build.SdkLevel.isAtLeastS
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 
@@ -40,7 +40,8 @@ import java.util.concurrent.TimeUnit
 fun initTestNetwork(context: Context, interfaceAddr: LinkAddress, setupTimeoutMs: Long = 10_000L):
         TestNetworkTracker {
     val tnm = context.getSystemService(TestNetworkManager::class.java)
-    val iface = tnm.createTunInterface(arrayOf(interfaceAddr))
+    val iface = if (isAtLeastS()) tnm.createTunInterface(listOf(interfaceAddr))
+            else tnm.createTunInterface(arrayOf(interfaceAddr))
     return TestNetworkTracker(context, iface, tnm, setupTimeoutMs)
 }
 
@@ -52,7 +53,7 @@ fun initTestNetwork(context: Context, interfaceAddr: LinkAddress, setupTimeoutMs
 class TestNetworkTracker internal constructor(
     val context: Context,
     val iface: TestNetworkInterface,
-    tnm: TestNetworkManager,
+    val tnm: TestNetworkManager,
     setupTimeoutMs: Long
 ) {
     private val cm = context.getSystemService(ConnectivityManager::class.java)
@@ -68,7 +69,7 @@ class TestNetworkTracker internal constructor(
                 // Test networks do not have NOT_VPN or TRUSTED capabilities by default
                 .removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
                 .removeCapability(NetworkCapabilities.NET_CAPABILITY_TRUSTED)
-                .setNetworkSpecifier(StringNetworkSpecifier(iface.interfaceName))
+                .setNetworkSpecifier(CompatUtil.makeTestNetworkSpecifier(iface.interfaceName))
                 .build()
         networkCallback = object : NetworkCallback() {
             override fun onAvailable(network: Network) {
@@ -88,5 +89,6 @@ class TestNetworkTracker internal constructor(
 
     fun teardown() {
         cm.unregisterNetworkCallback(networkCallback)
+        tnm.teardownTestNetwork(network)
     }
 }
