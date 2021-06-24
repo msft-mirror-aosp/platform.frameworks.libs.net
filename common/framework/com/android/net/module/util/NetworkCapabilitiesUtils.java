@@ -44,6 +44,7 @@ import com.android.internal.annotations.VisibleForTesting;
 
 /**
  * Utilities to examine {@link android.net.NetworkCapabilities}.
+ * @hide
  */
 public final class NetworkCapabilitiesUtils {
     // Transports considered to classify networks in UI, in order of which transport should be
@@ -133,7 +134,8 @@ public final class NetworkCapabilitiesUtils {
      * See {@code NetworkCapabilities#maybeMarkCapabilitiesRestricted}.
      */
     private static final long FORCE_RESTRICTED_CAPABILITIES =
-            (1 << NET_CAPABILITY_OEM_PAID)
+            (1 << NET_CAPABILITY_ENTERPRISE)
+            | (1 << NET_CAPABILITY_OEM_PAID)
             | (1 << NET_CAPABILITY_OEM_PRIVATE);
 
     /**
