@@ -26,6 +26,7 @@ import android.net.NetworkRequest
 import android.net.TestNetworkInterface
 import android.net.TestNetworkManager
 import android.os.Binder
+import com.android.modules.utils.build.SdkLevel.isAtLeastS
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 
@@ -39,7 +40,8 @@ import java.util.concurrent.TimeUnit
 fun initTestNetwork(context: Context, interfaceAddr: LinkAddress, setupTimeoutMs: Long = 10_000L):
         TestNetworkTracker {
     val tnm = context.getSystemService(TestNetworkManager::class.java)
-    val iface = tnm.createTunInterface(arrayOf(interfaceAddr))
+    val iface = if (isAtLeastS()) tnm.createTunInterface(listOf(interfaceAddr))
+            else tnm.createTunInterface(arrayOf(interfaceAddr))
     return TestNetworkTracker(context, iface, tnm, setupTimeoutMs)
 }
 
@@ -51,7 +53,7 @@ fun initTestNetwork(context: Context, interfaceAddr: LinkAddress, setupTimeoutMs
 class TestNetworkTracker internal constructor(
     val context: Context,
     val iface: TestNetworkInterface,
-    tnm: TestNetworkManager,
+    val tnm: TestNetworkManager,
     setupTimeoutMs: Long
 ) {
     private val cm = context.getSystemService(ConnectivityManager::class.java)
@@ -87,5 +89,6 @@ class TestNetworkTracker internal constructor(
 
     fun teardown() {
         cm.unregisterNetworkCallback(networkCallback)
+        tnm.teardownTestNetwork(network)
     }
 }
