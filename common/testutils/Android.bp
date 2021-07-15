@@ -22,7 +22,10 @@ java_library {
         "devicetests/**/*.java",
         "devicetests/**/*.kt",
     ],
-    defaults: ["lib_mockito_extended"],
+    defaults: [
+        "framework-connectivity-test-defaults",
+        "lib_mockito_extended"
+    ],
     libs: [
         "androidx.annotation_annotation",
     ],
@@ -32,6 +35,7 @@ java_library {
         "libnanohttpd",
         "net-tests-utils-host-device-common",
         "net-utils-device-common",
+        "modules-utils-build_system",
     ],
 }
 
