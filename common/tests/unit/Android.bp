@@ -10,6 +10,7 @@ android_library {
     name: "NetworkStaticLibTestsLib",
     srcs: ["src/**/*.java","src/**/*.kt"],
     min_sdk_version: "29",
+    defaults: ["framework-connectivity-test-defaults"],
     static_libs: [
         "net-utils-framework-common",
         "androidx.test.rules",
@@ -23,7 +24,8 @@ android_library {
     ],
     visibility: [
         "//frameworks/base/packages/Tethering/tests/integration",
-        "//packages/modules/Connectivity/Tethering/tests/integration",
+        "//packages/modules/Connectivity/tests:__subpackages__",
+        "//packages/modules/Connectivity/Tethering/tests:__subpackages__",
         "//packages/modules/NetworkStack/tests/integration",
     ]
 }
