@@ -1,3 +1,7 @@
+package {
+    default_applicable_licenses: ["Android-Apache-2.0"],
+}
+
 android_library {
     name: "NetdStaticLibTestsLib",
     srcs: [
@@ -19,7 +23,8 @@ android_library {
         // Visible for Tethering and NetworkStack integration test and link NetdStaticLibTestsLib
         // there, so that the tests under client-libs can also be run when running tethering and
         // NetworkStack MTS.
-        "//packages/modules/Connectivity/Tethering/tests/integration",
+        "//packages/modules/Connectivity/tests:__subpackages__",
+        "//packages/modules/Connectivity/Tethering/tests:__subpackages__",
         "//packages/modules/NetworkStack/tests/integration",
     ]
 }
