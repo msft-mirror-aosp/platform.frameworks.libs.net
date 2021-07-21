@@ -17,7 +17,6 @@
 package com.android.testutils
 
 import android.net.NetworkStats
-import android.net.netstats.provider.INetworkStatsProviderCallback
 import com.android.net.module.util.ArrayTrackRecord
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -25,14 +24,15 @@ import kotlin.test.fail
 
 private const val DEFAULT_TIMEOUT_MS = 3000L
 
-open class TestableNetworkStatsProviderCbBinder : INetworkStatsProviderCallback.Stub() {
+open class TestableNetworkStatsProviderCbBinder : NetworkStatsProviderCbStubCompat() {
     sealed class CallbackType {
         data class NotifyStatsUpdated(
             val token: Int,
             val ifaceStats: NetworkStats,
             val uidStats: NetworkStats
         ) : CallbackType()
-        object NotifyLimitReached : CallbackType()
+        object NotifyWarningOrLimitReached : CallbackType()
+        object LegacyNotifyLimitReached : CallbackType()
         object NotifyAlertReached : CallbackType()
         object Unregister : CallbackType()
     }
@@ -43,8 +43,13 @@ open class TestableNetworkStatsProviderCbBinder : INetworkStatsProviderCallback.
         history.add(CallbackType.NotifyStatsUpdated(token, ifaceStats, uidStats))
     }
 
+    override fun notifyWarningOrLimitReached() {
+        history.add(CallbackType.NotifyWarningOrLimitReached)
+    }
+
     override fun notifyLimitReached() {
-        history.add(CallbackType.NotifyLimitReached)
+        // Older callback renamed to notifyWarningOrLimitReached in S
+        history.add(CallbackType.LegacyNotifyLimitReached)
     }
 
     override fun notifyAlertReached() {
@@ -70,8 +75,11 @@ open class TestableNetworkStatsProviderCbBinder : INetworkStatsProviderCallback.
         assertNetworkStatsEquals(uidStats, event.uidStats)
     }
 
-    fun expectNotifyLimitReached() =
-            assertEquals(CallbackType.NotifyLimitReached, history.poll(DEFAULT_TIMEOUT_MS))
+    fun expectNotifyWarningOrLimitReached() =
+            assertEquals(CallbackType.NotifyWarningOrLimitReached, history.poll(DEFAULT_TIMEOUT_MS))
+
+    fun expectLegacyNotifyLimitReached() =
+            assertEquals(CallbackType.LegacyNotifyLimitReached, history.poll(DEFAULT_TIMEOUT_MS))
 
     fun expectNotifyAlertReached() =
             assertEquals(CallbackType.NotifyAlertReached, history.poll(DEFAULT_TIMEOUT_MS))
