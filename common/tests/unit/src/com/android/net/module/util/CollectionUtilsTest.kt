@@ -20,6 +20,7 @@ import androidx.test.filters.SmallTest
 import androidx.test.runner.AndroidJUnit4
 import org.junit.Test
 import org.junit.runner.RunWith
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -40,6 +41,15 @@ class CollectionUtilsTest {
     }
 
     @Test
+    fun testIndexOf() {
+        assertEquals(4, CollectionUtils.indexOf(listOf("A", "B", "C", "D", "E")) { it == "E" })
+        assertEquals(0, CollectionUtils.indexOf(listOf("A", "B", "C", "D", "E")) { it == "A" })
+        assertEquals(1, CollectionUtils.indexOf(listOf("AA", "BBB", "CCCC")) { it.length >= 3 })
+        assertEquals(1, CollectionUtils.indexOf(listOf("AA", null, "CCCC")) { it == null })
+        assertEquals(1, CollectionUtils.indexOf(listOf(null, "CCCC")) { it != null })
+    }
+
+    @Test
     fun testAll() {
         assertFalse(CollectionUtils.all(listOf("A", "B", "C", "D", "E")) { it != "E" })
         assertTrue(CollectionUtils.all(listOf("A", "B", "C", "D", "E")) { it != "F" })
@@ -50,5 +60,21 @@ class CollectionUtilsTest {
         assertTrue(CollectionUtils.all(listOf<String>()) { false })
         assertTrue(CollectionUtils.all(listOf(1)) { true })
         assertFalse(CollectionUtils.all(listOf(1)) { false })
+    }
+
+    @Test
+    fun testContains() {
+        assertTrue(CollectionUtils.contains(shortArrayOf(10, 20, 30), 10))
+        assertTrue(CollectionUtils.contains(shortArrayOf(10, 20, 30), 30))
+        assertFalse(CollectionUtils.contains(shortArrayOf(10, 20, 30), 40))
+        assertFalse(CollectionUtils.contains(null, 10.toShort()))
+        assertTrue(CollectionUtils.contains(intArrayOf(10, 20, 30), 10))
+        assertTrue(CollectionUtils.contains(intArrayOf(10, 20, 30), 30))
+        assertFalse(CollectionUtils.contains(intArrayOf(10, 20, 30), 40))
+        assertFalse(CollectionUtils.contains(null, 10.toInt()))
+        assertTrue(CollectionUtils.contains(arrayOf("A", "B", "C"), "A"))
+        assertTrue(CollectionUtils.contains(arrayOf("A", "B", "C"), "C"))
+        assertFalse(CollectionUtils.contains(arrayOf("A", "B", "C"), "D"))
+        assertFalse(CollectionUtils.contains(null, "A"))
     }
 }
