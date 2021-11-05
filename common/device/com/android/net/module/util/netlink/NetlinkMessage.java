@@ -123,6 +123,12 @@ public class NetlinkMessage {
             case NetlinkConstants.RTM_NEWLINK:
             case NetlinkConstants.RTM_DELLINK:
                 return (NetlinkMessage) RtNetlinkLinkMessage.parse(nlmsghdr, byteBuffer);
+            case NetlinkConstants.RTM_NEWADDR:
+            case NetlinkConstants.RTM_DELADDR:
+                return (NetlinkMessage) RtNetlinkAddressMessage.parse(nlmsghdr, byteBuffer);
+            case NetlinkConstants.RTM_NEWROUTE:
+            case NetlinkConstants.RTM_DELROUTE:
+                return (NetlinkMessage) RtNetlinkRouteMessage.parse(nlmsghdr, byteBuffer);
             case NetlinkConstants.RTM_NEWNEIGH:
             case NetlinkConstants.RTM_DELNEIGH:
             case NetlinkConstants.RTM_GETNEIGH:
