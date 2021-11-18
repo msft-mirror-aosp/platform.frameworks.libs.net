@@ -35,6 +35,7 @@ java_library {
         "libnanohttpd",
         "net-tests-utils-host-device-common",
         "net-utils-device-common",
+        "net-utils-device-common-netlink",
         "modules-utils-build_system",
     ],
 }
@@ -53,7 +54,21 @@ java_library {
       "//frameworks/libs/net/common/tests:__subpackages__",
       "//frameworks/libs/net/client-libs/tests:__subpackages__",
   ],
+  libs: [
+      "jsr305",
+  ],
   static_libs: [
       "kotlin-test"
   ]
+}
+
+java_test_host {
+    name: "net-tests-utils-host-common",
+    srcs: [
+        "host/**/*.java",
+        "host/**/*.kt",
+    ],
+    libs: ["tradefed"],
+    test_suites: ["device-tests", "general-tests", "cts", "mts"],
+    data: [":ConnectivityChecker"],
 }
