@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+package {
+    default_applicable_licenses: ["Android-Apache-2.0"],
+}
+
 android_test_helper_app {
     name: "ConnectivityChecker",
     srcs: ["src/**/*.kt"],
@@ -26,4 +30,5 @@ android_test_helper_app {
         "net-tests-utils",
     ],
     host_required: ["net-tests-utils-host-common"],
+    lint: { strict_updatability_linting: true },
 }
