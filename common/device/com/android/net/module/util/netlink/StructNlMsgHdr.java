@@ -93,7 +93,8 @@ public class StructNlMsgHdr {
     /**
      * Parse netlink message header from buffer.
      */
-    public static StructNlMsgHdr parse(ByteBuffer byteBuffer) {
+    @Nullable
+    public static StructNlMsgHdr parse(@NonNull ByteBuffer byteBuffer) {
         if (!hasAvailableSpace(byteBuffer)) return null;
 
         // The ByteOrder must have already been set by the caller.  In most
@@ -165,7 +166,7 @@ public class StructNlMsgHdr {
         return "StructNlMsgHdr{ "
                 + "nlmsg_len{" + nlmsg_len + "}, "
                 + "nlmsg_type{" + typeStr + "}, "
-                + "nlmsg_flags{" + flagsStr + ")}, "
+                + "nlmsg_flags{" + flagsStr + "}, "
                 + "nlmsg_seq{" + nlmsg_seq + "}, "
                 + "nlmsg_pid{" + nlmsg_pid + "} "
                 + "}";

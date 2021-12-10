@@ -79,12 +79,14 @@ public class NetlinkMessage {
         return null;
     }
 
-    protected StructNlMsgHdr mHeader;
+    @NonNull
+    protected final StructNlMsgHdr mHeader;
 
-    public NetlinkMessage(StructNlMsgHdr nlmsghdr) {
+    public NetlinkMessage(@NonNull StructNlMsgHdr nlmsghdr) {
         mHeader = nlmsghdr;
     }
 
+    @NonNull
     public StructNlMsgHdr getHeader() {
         return mHeader;
     }
@@ -96,7 +98,7 @@ public class NetlinkMessage {
         // a string by StructNlMsgHdr#toString and just keep as an integer. The specific message
         // which inherits NetlinkMessage could override NetlinkMessage#toString and provide the
         // specific netlink family to StructNlMsgHdr#toString.
-        return "NetlinkMessage{" + (mHeader == null ? "" : mHeader.toString()) + "}";
+        return "NetlinkMessage{" + mHeader.toString() + "}";
     }
 
     @NonNull
@@ -118,6 +120,15 @@ public class NetlinkMessage {
     private static NetlinkMessage parseRtMessage(@NonNull StructNlMsgHdr nlmsghdr,
             @NonNull ByteBuffer byteBuffer) {
         switch (nlmsghdr.nlmsg_type) {
+            case NetlinkConstants.RTM_NEWLINK:
+            case NetlinkConstants.RTM_DELLINK:
+                return (NetlinkMessage) RtNetlinkLinkMessage.parse(nlmsghdr, byteBuffer);
+            case NetlinkConstants.RTM_NEWADDR:
+            case NetlinkConstants.RTM_DELADDR:
+                return (NetlinkMessage) RtNetlinkAddressMessage.parse(nlmsghdr, byteBuffer);
+            case NetlinkConstants.RTM_NEWROUTE:
+            case NetlinkConstants.RTM_DELROUTE:
+                return (NetlinkMessage) RtNetlinkRouteMessage.parse(nlmsghdr, byteBuffer);
             case NetlinkConstants.RTM_NEWNEIGH:
             case NetlinkConstants.RTM_DELNEIGH:
             case NetlinkConstants.RTM_GETNEIGH:
