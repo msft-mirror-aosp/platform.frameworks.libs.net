@@ -52,4 +52,34 @@ public class NetworkStatsUtils {
         }
         return r / den;
     }
+
+    /**
+     * Value of the match rule of the subscriberId to match networks with specific subscriberId.
+     *
+     * @hide
+     */
+    public static final int SUBSCRIBER_ID_MATCH_RULE_EXACT = 0;
+    /**
+     * Value of the match rule of the subscriberId to match networks with any subscriberId which
+     * includes null and non-null.
+     *
+     * @hide
+     */
+    public static final int SUBSCRIBER_ID_MATCH_RULE_ALL = 1;
+
+    /**
+     * Return the constrained value by given the lower and upper bounds.
+     */
+    public static int constrain(int amount, int low, int high) {
+        if (low > high) throw new IllegalArgumentException("low(" + low + ") > high(" + high + ")");
+        return amount < low ? low : (amount > high ? high : amount);
+    }
+
+    /**
+     * Return the constrained value by given the lower and upper bounds.
+     */
+    public static long constrain(long amount, long low, long high) {
+        if (low > high) throw new IllegalArgumentException("low(" + low + ") > high(" + high + ")");
+        return amount < low ? low : (amount > high ? high : amount);
+    }
 }
