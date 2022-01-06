@@ -14,22 +14,14 @@
  * limitations under the License.
  */
 
-package android.net.annotations;
+#ifndef NETDUTILS_UID_CONSTANTS_H
+#define NETDUTILS_UID_CONSTANTS_H
 
-import android.annotation.IntDef;
-import android.net.IpSecManager;
+// These are used by both eBPF kernel programs and netd, we cannot put them in NetdConstant.h since
+// we have to minimize the number of headers included by the BPF kernel program.
+#define MIN_SYSTEM_UID 0
+#define MAX_SYSTEM_UID 9999
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
+#define PER_USER_RANGE 100000
 
-/**
- * IPsec traffic direction.
- *
- * <p>Mainline modules cannot reference hidden @IntDef. Moving this annotation to a separate class
- * to allow others to statically include it.
- *
- * @hide
- */
-@IntDef(value = {IpSecManager.DIRECTION_IN, IpSecManager.DIRECTION_OUT})
-@Retention(RetentionPolicy.SOURCE)
-public @interface PolicyDirection {}
+#endif  // NETDUTILS_UID_CONSTANTS_H
