@@ -18,7 +18,7 @@ package {
 
 cc_library_headers {
     name: "bpf_syscall_wrappers",
-    vendor_available: false,
+    vendor_available: true,
     host_supported: true,
     native_bridge_supported: true,
     export_include_dirs: ["include"],
@@ -40,6 +40,7 @@ cc_library_headers {
         "//packages/modules/Connectivity/netd",
         "//packages/modules/Connectivity/service",
         "//packages/modules/Connectivity/service/native",
+        "//packages/modules/Connectivity/service/native/libs/libclat",
         "//packages/modules/Connectivity/Tethering",
         "//packages/providers/MediaProvider/jni",
         "//system/bpf/libbpf_android",
