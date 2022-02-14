@@ -1,4 +1,4 @@
-// Copyright (C) 2021 The Android Open Source Project
+// Copyright (C) 2022 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,22 +16,17 @@ package {
     default_applicable_licenses: ["Android-Apache-2.0"],
 }
 
-cc_library_headers {
-    name: "bpf_syscall_wrappers",
-    vendor_available: true,
-    host_supported: true,
-    native_bridge_supported: true,
+cc_library_static {
+    name: "libnettestutils",
     export_include_dirs: ["include"],
-    cflags: [
-        "-Wall",
-        "-Werror",
+    srcs: ["DumpService.cpp"],
+
+    shared_libs: [
+        "libbinder",
+        "libutils",
     ],
-    sdk_version: "30",
-    min_sdk_version: "30",
-    apex_available: [
-        "//apex_available:platform",
-        "com.android.art.debug",
-        "com.android.mediaprovider",
-        "com.android.tethering",
+    cflags: [
+        "-Werror",
+        "-Wall",
     ],
 }
