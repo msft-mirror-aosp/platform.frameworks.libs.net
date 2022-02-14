@@ -70,6 +70,7 @@ java_library {
       "androidx.annotation_annotation",
       "framework-annotations-lib",
   ],
+  lint: { strict_updatability_linting: true },
 }
 
 java_defaults {
@@ -83,6 +84,19 @@ java_defaults {
     ],
 }
 
+java_library {
+    name: "net-utils-dnspacket-common",
+    srcs: [
+    "framework/**/DnsPacket.java",
+    "framework/**/DnsPacketUtils.java",
+    ],
+    sdk_version: "module_current",
+    visibility: [
+        "//packages/services/Iwlan:__subpackages__",
+    ],
+    libs: ["framework-annotations-lib"],
+}
+
 filegroup {
     name: "net-utils-framework-common-srcs",
     srcs: ["framework/**/*.java"],
@@ -90,7 +104,6 @@ filegroup {
     visibility: [
         "//frameworks/base",
         "//packages/modules/Connectivity:__subpackages__",
-        "//frameworks/base/packages/Connectivity/framework",
     ],
 }
 
@@ -98,26 +111,31 @@ java_library {
     name: "net-utils-device-common-bpf",
     srcs: [
         "device/com/android/net/module/util/BpfMap.java",
+        "device/com/android/net/module/util/HexDump.java",
+        "device/com/android/net/module/util/IBpfMap.java",
         "device/com/android/net/module/util/JniUtil.java",
+        "device/com/android/net/module/util/Struct.java",
+        "device/com/android/net/module/util/TcUtils.java",
+        "device/com/android/net/module/util/bpf/*.java",
     ],
-    sdk_version: "system_current",
+    sdk_version: "module_current",
     min_sdk_version: "29",
     visibility: [
         "//frameworks/libs/net/common/tests:__subpackages__",
         "//frameworks/libs/net/common/testutils:__subpackages__",
         "//packages/modules/Connectivity:__subpackages__",
         "//packages/modules/NetworkStack:__subpackages__",
-    ],
-    static_libs: [
-        "net-utils-device-common-struct",
+        "//frameworks/base/services/core",
     ],
     libs: [
         "androidx.annotation_annotation",
+        "framework-connectivity.stubs.module_lib",
     ],
     apex_available: [
         "com.android.tethering",
         "//apex_available:platform",
     ],
+    lint: { strict_updatability_linting: true },
 }
 
 java_library {
@@ -125,10 +143,11 @@ java_library {
     srcs: [
         "device/com/android/net/module/util/HexDump.java",
         "device/com/android/net/module/util/Ipv6Utils.java",
+        "device/com/android/net/module/util/PacketBuilder.java",
         "device/com/android/net/module/util/Struct.java",
         "device/com/android/net/module/util/structs/*.java",
     ],
-    sdk_version: "system_current",
+    sdk_version: "module_current",
     min_sdk_version: "29",
     visibility: [
         "//frameworks/libs/net/common/testutils:__subpackages__",
@@ -140,11 +159,13 @@ java_library {
     ],
     libs: [
         "androidx.annotation_annotation",
+        "framework-connectivity.stubs.module_lib",
     ],
     apex_available: [
         "com.android.tethering",
         "//apex_available:platform",
     ],
+    lint: { strict_updatability_linting: true },
 }
 
 java_library {
@@ -152,7 +173,7 @@ java_library {
     srcs: [
         "device/com/android/net/module/util/netlink/*.java",
     ],
-    sdk_version: "system_current",
+    sdk_version: "module_current",
     min_sdk_version: "29",
     visibility: [
         "//frameworks/libs/net/common/testutils:__subpackages__",
@@ -164,11 +185,13 @@ java_library {
     ],
     libs: [
         "androidx.annotation_annotation",
+        "framework-connectivity.stubs.module_lib",
     ],
     apex_available: [
         "com.android.tethering",
         "//apex_available:platform",
     ],
+    lint: { strict_updatability_linting: true },
 }
 
 java_library {
@@ -199,17 +222,20 @@ java_library {
         "com.android.tethering",
         "//apex_available:platform",
     ],
+    lint: { strict_updatability_linting: true },
 }
 
 java_library {
     name: "net-utils-framework-common",
     srcs: [
         ":net-utils-framework-common-srcs",
-        // TODO: avoid including all framework annotations as they end up in library users jars
-        // and need jarjaring
-        ":framework-annotations",
     ],
-    sdk_version: "system_current",
+    sdk_version: "module_current",
+    libs: [
+        "framework-annotations-lib",
+        "framework-connectivity.stubs.module_lib",
+        "framework-connectivity-tiramisu.stubs.module_lib",
+    ],
     jarjar_rules: "jarjar-rules-shared.txt",
     visibility: [
         "//cts/tests/tests/net",
@@ -228,7 +254,9 @@ java_library {
         "//frameworks/libs/net/common/tests:__subpackages__",
         "//frameworks/libs/net/common/device",
         "//packages/modules/Wifi/framework/tests:__subpackages__",
+        "//packages/apps/Settings",
     ],
+    lint: { strict_updatability_linting: true },
 }
 filegroup {
     name: "net-utils-services-common-srcs",
@@ -258,8 +286,12 @@ java_library {
         "framework-connectivity",
     ],
     visibility: [
+        // TODO: remove after NetworkStatsService moves to the module.
         "//frameworks/base/services/net",
+        "//packages/modules/Connectivity/tests:__subpackages__",
+        "//packages/modules/Bluetooth/android/app",
     ],
+    lint: { strict_updatability_linting: true },
 }
 
 // Use a filegroup and not a library for telephony sources, as framework-annotations cannot be
@@ -311,32 +343,5 @@ filegroup {
     visibility: [
         "//frameworks/opt/net/wifi/service",
         "//packages/modules/Wifi/service",
-    ],
-}
-
-// This file group is deprecated; new users should use net-utils-annotations
-filegroup {
-    name: "net-utils-annotations-srcs",
-    srcs: [
-        "annotations/android/net/annotations/PolicyDirection.java",
-    ],
-    visibility: [
-        "//frameworks/base",
-    ],
-}
-
-
-java_library {
-    name: "net-utils-annotations",
-    srcs: [":net-utils-annotations-srcs"],
-    libs: [
-        "framework-annotations-lib",
-    ],
-    sdk_version: "system_current",
-    min_sdk_version: "30",
-    visibility: ["//visibility:public"],
-    apex_available: [
-        "//apex_available:anyapex",
-        "//apex_available:platform",
     ],
 }
