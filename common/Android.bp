@@ -110,7 +110,9 @@ filegroup {
 java_library {
     name: "net-utils-device-common-bpf",
     srcs: [
+        "device/com/android/net/module/util/BpfBitmap.java",
         "device/com/android/net/module/util/BpfMap.java",
+        "device/com/android/net/module/util/BpfUtils.java",
         "device/com/android/net/module/util/HexDump.java",
         "device/com/android/net/module/util/IBpfMap.java",
         "device/com/android/net/module/util/JniUtil.java",
@@ -234,7 +236,7 @@ java_library {
     libs: [
         "framework-annotations-lib",
         "framework-connectivity.stubs.module_lib",
-        "framework-connectivity-tiramisu.stubs.module_lib",
+        "framework-connectivity-t.stubs.module_lib",
     ],
     jarjar_rules: "jarjar-rules-shared.txt",
     visibility: [
