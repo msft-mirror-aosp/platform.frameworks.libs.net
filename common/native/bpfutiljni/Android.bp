@@ -17,16 +17,28 @@ package {
 }
 
 cc_library_static {
-    name: "libnettestutils",
-    export_include_dirs: ["include"],
-    srcs: ["DumpService.cpp"],
-
+    name: "libnet_utils_device_common_bpfutils",
+    srcs: ["com_android_net_module_util_BpfUtils.cpp"],
+    header_libs: [
+        "bpf_syscall_wrappers",
+        "jni_headers",
+    ],
     shared_libs: [
-        "libbinder",
-        "libutils",
+        "libbase",
+        "liblog",
+        "libnativehelper_compat_libc++",
     ],
     cflags: [
-        "-Werror",
         "-Wall",
+        "-Werror",
+        "-Wno-unused-parameter",
+    ],
+    min_sdk_version: "30",
+    apex_available: [
+        "com.android.tethering",
+        "//apex_available:platform",
+    ],
+    visibility: [
+        "//packages/modules/Connectivity/service",
     ],
 }
