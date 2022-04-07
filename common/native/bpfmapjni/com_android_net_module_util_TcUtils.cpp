@@ -54,6 +54,24 @@ static void com_android_net_module_util_TcUtils_tcFilterAddDevBpf(
   }
 }
 
+// tc filter add dev .. ingress prio .. protocol .. matchall \
+//     action police rate .. burst .. conform-exceed pipe/continue \
+//     action bpf object-pinned .. \
+//     drop
+static void com_android_net_module_util_TcUtils_tcFilterAddDevIngressPolice(
+    JNIEnv *env, jobject clazz, jint ifIndex, jshort prio, jshort proto,
+    jint rateInBytesPerSec, jstring bpfProgPath) {
+  ScopedUtfChars pathname(env, bpfProgPath);
+  int error = tcAddIngressPoliceFilter(ifIndex, prio, proto, rateInBytesPerSec,
+                                       pathname.c_str());
+  if (error) {
+    throwIOException(env,
+                     "com_android_net_module_util_TcUtils_"
+                     "tcFilterAddDevIngressPolice error: ",
+                     error);
+  }
+}
+
 // tc filter del dev .. in/egress prio .. protocol ..
 static void com_android_net_module_util_TcUtils_tcFilterDelDev(
     JNIEnv *env, jobject clazz, jint ifIndex, jboolean ingress, jshort prio,
@@ -66,6 +84,18 @@ static void com_android_net_module_util_TcUtils_tcFilterDelDev(
   }
 }
 
+// tc qdisc add dev .. clsact
+static void com_android_net_module_util_TcUtils_tcQdiscAddDevClsact(JNIEnv *env,
+                                                                    jobject clazz,
+                                                                    jint ifIndex) {
+  int error = tcAddQdiscClsact(ifIndex);
+  if (error) {
+    throwIOException(
+        env,
+        "com_android_net_module_util_TcUtils_tcQdiscAddDevClsact error: ", error);
+  }
+}
+
 /*
  * JNI registration.
  */
@@ -75,8 +105,12 @@ static const JNINativeMethod gMethods[] = {
      (void *)com_android_net_module_util_TcUtils_isEthernet},
     {"tcFilterAddDevBpf", "(IZSSLjava/lang/String;)V",
      (void *)com_android_net_module_util_TcUtils_tcFilterAddDevBpf},
+    {"tcFilterAddDevIngressPolice", "(ISSILjava/lang/String;)V",
+     (void *)com_android_net_module_util_TcUtils_tcFilterAddDevIngressPolice},
     {"tcFilterDelDev", "(IZSS)V",
      (void *)com_android_net_module_util_TcUtils_tcFilterDelDev},
+    {"tcQdiscAddDevClsact", "(I)V",
+     (void *)com_android_net_module_util_TcUtils_tcQdiscAddDevClsact},
 };
 
 int register_com_android_net_module_util_TcUtils(JNIEnv *env,

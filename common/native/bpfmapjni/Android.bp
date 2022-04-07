@@ -30,7 +30,7 @@ cc_library_static {
         "liblog",
         "libnativehelper_compat_libc++",
     ],
-    static_libs: [
+    whole_static_libs: [
         "libtcutils",
     ],
     cflags: [
@@ -46,5 +46,7 @@ cc_library_static {
     ],
     visibility: [
         "//packages/modules/Connectivity:__subpackages__",
+        // TODO: remove after NetworkStatsService moves to the module.
+        "//frameworks/base/packages/ConnectivityT/service",
     ],
 }
