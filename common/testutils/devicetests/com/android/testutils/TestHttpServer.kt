@@ -54,12 +54,12 @@ class TestHttpServer(host: String? = null) : NanoHTTPD(host, 0 /* auto-select th
     fun addResponse(
         uri: Uri,
         statusCode: Response.IStatus,
-        headers: Map<String, String>? = null,
+        locationHeader: String? = null,
         content: String = ""
     ) {
         addResponse(Request(uri.path
                 ?: "", Method.GET, uri.query ?: ""),
-                statusCode, headers, content)
+                statusCode, locationHeader, content)
     }
 
     /**
@@ -68,13 +68,11 @@ class TestHttpServer(host: String? = null) : NanoHTTPD(host, 0 /* auto-select th
     fun addResponse(
         request: Request,
         statusCode: Response.IStatus,
-        headers: Map<String, String>? = null,
+        locationHeader: String? = null,
         content: String = ""
     ) {
         val response = newFixedLengthResponse(statusCode, "text/plain", content)
-        headers?.forEach {
-            (key, value) -> response.addHeader(key, value)
-        }
+        locationHeader?.let { response.addHeader("Location", it) }
         responses[request] = response
     }
 

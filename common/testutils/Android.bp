@@ -22,10 +22,7 @@ java_library {
         "devicetests/**/*.java",
         "devicetests/**/*.kt",
     ],
-    defaults: [
-        "framework-connectivity-test-defaults",
-        "lib_mockito_extended"
-    ],
+    defaults: ["lib_mockito_extended"],
     libs: [
         "androidx.annotation_annotation",
     ],
@@ -35,8 +32,6 @@ java_library {
         "libnanohttpd",
         "net-tests-utils-host-device-common",
         "net-utils-device-common",
-        "net-utils-device-common-netlink",
-        "modules-utils-build_system",
     ],
 }
 
@@ -53,9 +48,6 @@ java_library {
   visibility: [
       "//frameworks/libs/net/common/tests:__subpackages__",
       "//frameworks/libs/net/client-libs/tests:__subpackages__",
-  ],
-  libs: [
-      "jsr305",
   ],
   static_libs: [
       "kotlin-test"

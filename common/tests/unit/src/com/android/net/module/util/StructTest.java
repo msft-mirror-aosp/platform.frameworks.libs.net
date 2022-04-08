@@ -31,6 +31,7 @@ import android.net.MacAddress;
 import androidx.test.filters.SmallTest;
 import androidx.test.runner.AndroidJUnit4;
 
+import com.android.internal.util.HexDump;
 import com.android.net.module.util.Struct.Field;
 import com.android.net.module.util.Struct.Type;
 

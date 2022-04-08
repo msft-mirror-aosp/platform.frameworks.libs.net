@@ -26,40 +26,20 @@ import android.net.NetworkRequest
 import android.net.TestNetworkInterface
 import android.net.TestNetworkManager
 import android.os.Binder
-import com.android.modules.utils.build.SdkLevel.isAtLeastS
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 
 /**
- * Create a test network based on a TUN interface with a LinkAddress.
+ * Create a test network based on a TUN interface.
  *
  * This method will block until the test network is available. Requires
  * [android.Manifest.permission.CHANGE_NETWORK_STATE] and
  * [android.Manifest.permission.MANAGE_TEST_NETWORKS].
  */
-fun initTestNetwork(
-    context: Context,
-    interfaceAddr: LinkAddress,
-    setupTimeoutMs: Long = 10_000L
-): TestNetworkTracker {
-    return initTestNetwork(context, listOf(interfaceAddr), setupTimeoutMs)
-}
-
-/**
- * Create a test network based on a TUN interface with giving LinkAddress list.
- *
- * This method will block until the test network is available. Requires
- * [android.Manifest.permission.CHANGE_NETWORK_STATE] and
- * [android.Manifest.permission.MANAGE_TEST_NETWORKS].
- */
-fun initTestNetwork(
-    context: Context,
-    linkAddrs: List<LinkAddress>,
-    setupTimeoutMs: Long = 10_000L
-): TestNetworkTracker {
+fun initTestNetwork(context: Context, interfaceAddr: LinkAddress, setupTimeoutMs: Long = 10_000L):
+        TestNetworkTracker {
     val tnm = context.getSystemService(TestNetworkManager::class.java)
-    val iface = if (isAtLeastS()) tnm.createTunInterface(linkAddrs)
-            else tnm.createTunInterface(linkAddrs.toTypedArray())
+    val iface = tnm.createTunInterface(arrayOf(interfaceAddr))
     return TestNetworkTracker(context, iface, tnm, setupTimeoutMs)
 }
 
@@ -71,7 +51,7 @@ fun initTestNetwork(
 class TestNetworkTracker internal constructor(
     val context: Context,
     val iface: TestNetworkInterface,
-    val tnm: TestNetworkManager,
+    tnm: TestNetworkManager,
     setupTimeoutMs: Long
 ) {
     private val cm = context.getSystemService(ConnectivityManager::class.java)
@@ -79,7 +59,6 @@ class TestNetworkTracker internal constructor(
 
     private val networkCallback: NetworkCallback
     val network: Network
-    val testIface: TestNetworkInterface
 
     init {
         val networkFuture = CompletableFuture<Network>()
@@ -104,12 +83,9 @@ class TestNetworkTracker internal constructor(
             teardown()
             throw e
         }
-
-        testIface = iface
     }
 
     fun teardown() {
         cm.unregisterNetworkCallback(networkCallback)
-        tnm.teardownTestNetwork(network)
     }
 }

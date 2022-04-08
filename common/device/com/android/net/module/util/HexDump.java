@@ -16,7 +16,7 @@
 
 package com.android.net.module.util;
 
-import androidx.annotation.Nullable;
+import android.annotation.Nullable;
 
 /**
  * Hex utility functions.

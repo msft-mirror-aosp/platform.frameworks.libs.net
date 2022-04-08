@@ -33,8 +33,7 @@ import org.junit.runner.RunWith;
 public final class MacAddressUtilsTest {
 
     // Matches WifiInfo.DEFAULT_MAC_ADDRESS
-    private static final MacAddress DEFAULT_MAC_ADDRESS =
-            MacAddress.fromString("02:00:00:00:00:00");
+    private static final String DEFAULT_MAC_ADDRESS = "02:00:00:00:00:00";
 
     @Test
     public void testIsMulticastAddress() {

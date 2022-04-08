@@ -27,7 +27,6 @@ import java.util.function.Predicate;
 
 /**
  * Utilities for {@link Collection} and arrays.
- * @hide
  */
 public final class CollectionUtils {
     private CollectionUtils() {}
@@ -114,19 +113,6 @@ public final class CollectionUtils {
     public static <T> boolean any(@NonNull SparseArray<T> array, @NonNull Predicate<T> predicate) {
         for (int i = 0; i < array.size(); ++i) {
             if (predicate.test(array.valueAt(i))) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * @return true if the array contains the specified value.
-     */
-    public static boolean contains(@Nullable short[] array, short value) {
-        if (array == null) return false;
-        for (int element : array) {
-            if (element == value) {
                 return true;
             }
         }

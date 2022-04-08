@@ -24,7 +24,6 @@ import java.net.InetAddress;
 
 /**
  * Various utilities used in connectivity code.
- * @hide
  */
 public final class ConnectivityUtils {
     private ConnectivityUtils() {}
