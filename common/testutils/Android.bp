@@ -28,10 +28,10 @@ java_library {
     ],
     libs: [
         "androidx.annotation_annotation",
+        "net-utils-device-common-bpf",  // TestBpfMap extends IBpfMap.
     ],
     static_libs: [
         "androidx.test.ext.junit",
-        "compatibility-device-util-axt",
         "kotlin-reflect",
         "libnanohttpd",
         "net-tests-utils-host-device-common",
