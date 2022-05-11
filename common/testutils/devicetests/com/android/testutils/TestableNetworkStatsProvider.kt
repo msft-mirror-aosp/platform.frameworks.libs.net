@@ -17,6 +17,7 @@
 package com.android.testutils
 
 import android.net.netstats.provider.NetworkStatsProvider
+import android.util.Log
 import com.android.net.module.util.ArrayTrackRecord
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -30,23 +31,41 @@ open class TestableNetworkStatsProvider(
 ) : NetworkStatsProvider() {
     sealed class CallbackType {
         data class OnRequestStatsUpdate(val token: Int) : CallbackType()
-        data class OnSetLimit(val iface: String?, val quotaBytes: Long) : CallbackType()
+        data class OnSetWarningAndLimit(
+            val iface: String,
+            val warningBytes: Long,
+            val limitBytes: Long
+        ) : CallbackType()
+        data class OnSetLimit(val iface: String, val limitBytes: Long) : CallbackType() {
+            // Add getter for backward compatibility since old tests do not recognize limitBytes.
+            val quotaBytes: Long
+                get() = limitBytes
+        }
         data class OnSetAlert(val quotaBytes: Long) : CallbackType()
     }
 
+    private val TAG = this::class.simpleName
     val history = ArrayTrackRecord<CallbackType>().newReadHead()
     // See ReadHead#mark
     val mark get() = history.mark
 
     override fun onRequestStatsUpdate(token: Int) {
+        Log.d(TAG, "onRequestStatsUpdate $token")
         history.add(CallbackType.OnRequestStatsUpdate(token))
     }
 
+    override fun onSetWarningAndLimit(iface: String, warningBytes: Long, limitBytes: Long) {
+        Log.d(TAG, "onSetWarningAndLimit $iface $warningBytes $limitBytes")
+        history.add(CallbackType.OnSetWarningAndLimit(iface, warningBytes, limitBytes))
+    }
+
     override fun onSetLimit(iface: String, quotaBytes: Long) {
+        Log.d(TAG, "onSetLimit $iface $quotaBytes")
         history.add(CallbackType.OnSetLimit(iface, quotaBytes))
     }
 
     override fun onSetAlert(quotaBytes: Long) {
+        Log.d(TAG, "onSetAlert $quotaBytes")
         history.add(CallbackType.OnSetAlert(quotaBytes))
     }
 
@@ -56,10 +75,10 @@ open class TestableNetworkStatsProvider(
         if (token != TOKEN_ANY) {
             assertEquals(token, event.token)
         }
-        return token
+        return event.token
     }
 
-    fun expectOnSetLimit(iface: String?, quotaBytes: Long, timeout: Long = defaultTimeoutMs) {
+    fun expectOnSetLimit(iface: String, quotaBytes: Long, timeout: Long = defaultTimeoutMs) {
         assertEquals(CallbackType.OnSetLimit(iface, quotaBytes), history.poll(timeout))
     }
 

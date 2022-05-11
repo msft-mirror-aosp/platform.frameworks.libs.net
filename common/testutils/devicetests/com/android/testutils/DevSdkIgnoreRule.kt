@@ -17,10 +17,15 @@
 package com.android.testutils
 
 import android.os.Build
+import com.android.modules.utils.build.SdkLevel
+import kotlin.test.fail
 import org.junit.Assume.assumeTrue
 import org.junit.rules.TestRule
 import org.junit.runner.Description
 import org.junit.runners.model.Statement
+
+// TODO: Remove it when Build.VERSION_CODES.SC_V2 is available
+const val SC_V2 = 32
 
 /**
  * Returns true if the development SDK version of the device is in the provided range.
@@ -29,14 +34,37 @@ import org.junit.runners.model.Statement
  * [Build.VERSION.SDK_INT].
  */
 fun isDevSdkInRange(minExclusive: Int?, maxInclusive: Int?): Boolean {
-    // In-development API n+1 will have SDK_INT == n and CODENAME != REL.
-    // Stable API n has SDK_INT == n and CODENAME == REL.
-    val release = "REL" == Build.VERSION.CODENAME
-    val sdkInt = Build.VERSION.SDK_INT
-    val devApiLevel = sdkInt + if (release) 0 else 1
+    return (minExclusive == null || isDevSdkAfter(minExclusive)) &&
+            (maxInclusive == null || isDevSdkUpTo(maxInclusive))
+}
 
-    return (minExclusive == null || devApiLevel > minExclusive) &&
-            (maxInclusive == null || devApiLevel <= maxInclusive)
+private fun isDevSdkAfter(minExclusive: Int): Boolean {
+    // A development build for T typically has SDK_INT = 30 (R) or SDK_INT = 31 (S), so SDK_INT
+    // alone cannot be used to check the SDK version.
+    // For recent SDKs that still have development builds used for testing, use SdkLevel utilities
+    // instead of SDK_INT.
+    return when (minExclusive) {
+        // TODO: Use Build.VERSION_CODES.SC_V2 when it is available
+        SC_V2 -> SdkLevel.isAtLeastT()
+        // TODO: To use SdkLevel.isAtLeastSv2 when available
+        Build.VERSION_CODES.S -> fail("Do you expect to ignore the test until T? Use SC_V2 instead")
+        Build.VERSION_CODES.R -> SdkLevel.isAtLeastS()
+        // Development builds of SDK versions <= R are not used anymore
+        else -> Build.VERSION.SDK_INT > minExclusive
+    }
+}
+
+private fun isDevSdkUpTo(maxInclusive: Int): Boolean {
+    return when (maxInclusive) {
+        // TODO: Use Build.VERSION_CODES.SC_V2 when it is available
+        SC_V2 -> !SdkLevel.isAtLeastT()
+        // TODO: To use SdkLevel.isAtLeastSv2 when available
+        Build.VERSION_CODES.S ->
+                fail("Do you expect to ignore the test before T? Use SC_V2 instead")
+        Build.VERSION_CODES.R -> !SdkLevel.isAtLeastS()
+        // Development builds of SDK versions <= R are not used anymore
+        else -> Build.VERSION.SDK_INT <= maxInclusive
+    }
 }
 
 /**
