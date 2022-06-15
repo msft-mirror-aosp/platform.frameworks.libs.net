@@ -76,13 +76,7 @@ interface INetd {
   void idletimerAddInterface(in @utf8InCpp String ifName, int timeout, in @utf8InCpp String classLabel);
   void idletimerRemoveInterface(in @utf8InCpp String ifName, int timeout, in @utf8InCpp String classLabel);
   void strictUidCleartextPenalty(int uid, int policyPenalty);
-  /**
-   * @deprecated This method has no effect and throws UnsupportedOperationException. The clatd control plane moved to the mainline module starting in T. See ClatCoordinator.
-   */
   @utf8InCpp String clatdStart(in @utf8InCpp String ifName, in @utf8InCpp String nat64Prefix);
-  /**
-   * @deprecated This method has no effect and throws UnsupportedOperationException. The clatd control plane moved to the mainline module starting in T. See ClatCoordinator.
-   */
   void clatdStop(in @utf8InCpp String ifName);
   boolean ipfwdEnabled();
   @utf8InCpp String[] ipfwdGetRequesterList();
@@ -145,25 +139,10 @@ interface INetd {
   void networkAddRouteParcel(int netId, in android.net.RouteInfoParcel routeInfo);
   void networkUpdateRouteParcel(int netId, in android.net.RouteInfoParcel routeInfo);
   void networkRemoveRouteParcel(int netId, in android.net.RouteInfoParcel routeInfo);
-  /**
-   * @deprecated This method has no effect and throws UnsupportedOperationException. The mainline module accesses the BPF map directly starting in S. See BpfCoordinator.
-   */
   void tetherOffloadRuleAdd(in android.net.TetherOffloadRuleParcel rule);
-  /**
-   * @deprecated This method has no effect and throws UnsupportedOperationException. The mainline module accesses the BPF map directly starting in S. See BpfCoordinator.
-   */
   void tetherOffloadRuleRemove(in android.net.TetherOffloadRuleParcel rule);
-  /**
-   * @deprecated This method has no effect and throws UnsupportedOperationException. The mainline module accesses the BPF map directly starting in S. See BpfCoordinator.
-   */
   android.net.TetherStatsParcel[] tetherOffloadGetStats();
-  /**
-   * @deprecated This method has no effect and throws UnsupportedOperationException. The mainline module accesses the BPF map directly starting in S. See BpfCoordinator.
-   */
   void tetherOffloadSetInterfaceQuota(int ifIndex, long quotaBytes);
-  /**
-   * @deprecated This method has no effect and throws UnsupportedOperationException. The mainline module accesses the BPF map directly starting in S. See BpfCoordinator.
-   */
   android.net.TetherStatsParcel tetherOffloadGetAndClearStats(int ifIndex);
   void networkCreate(in android.net.NativeNetworkConfig config);
   void networkAddUidRangesParcel(in android.net.netd.aidl.NativeUidRangeConfig uidRangesConfig);

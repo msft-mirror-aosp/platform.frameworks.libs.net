@@ -27,18 +27,27 @@
 
 namespace android {
 
-static jint com_android_net_module_util_BpfMap_nativeBpfFdGet(JNIEnv *env, jclass clazz,
+static jint com_android_net_module_util_BpfMap_closeMap(JNIEnv *env, jobject clazz,
+        jint fd) {
+    int ret = close(fd);
+
+    if (ret) jniThrowErrnoException(env, "closeMap", errno);
+
+    return ret;
+}
+
+static jint com_android_net_module_util_BpfMap_bpfFdGet(JNIEnv *env, jobject clazz,
         jstring path, jint mode) {
     ScopedUtfChars pathname(env, path);
 
     jint fd = bpf::bpfFdGet(pathname.c_str(), static_cast<unsigned>(mode));
 
-    if (fd < 0) jniThrowErrnoException(env, "nativeBpfFdGet", errno);
+    if (fd < 0) jniThrowErrnoException(env, "bpfFdGet", errno);
 
     return fd;
 }
 
-static void com_android_net_module_util_BpfMap_nativeWriteToMapEntry(JNIEnv *env, jobject self,
+static void com_android_net_module_util_BpfMap_writeToMapEntry(JNIEnv *env, jobject clazz,
         jint fd, jbyteArray key, jbyteArray value, jint flags) {
     ScopedByteArrayRO keyRO(env, key);
     ScopedByteArrayRO valueRO(env, value);
@@ -46,7 +55,7 @@ static void com_android_net_module_util_BpfMap_nativeWriteToMapEntry(JNIEnv *env
     int ret = bpf::writeToMapEntry(static_cast<int>(fd), keyRO.get(), valueRO.get(),
             static_cast<int>(flags));
 
-    if (ret) jniThrowErrnoException(env, "nativeWriteToMapEntry", errno);
+    if (ret) jniThrowErrnoException(env, "writeToMapEntry", errno);
 }
 
 static jboolean throwIfNotEnoent(JNIEnv *env, const char* functionName, int ret, int err) {
@@ -56,7 +65,7 @@ static jboolean throwIfNotEnoent(JNIEnv *env, const char* functionName, int ret,
     return false;
 }
 
-static jboolean com_android_net_module_util_BpfMap_nativeDeleteMapEntry(JNIEnv *env, jobject self,
+static jboolean com_android_net_module_util_BpfMap_deleteMapEntry(JNIEnv *env, jobject clazz,
         jint fd, jbyteArray key) {
     ScopedByteArrayRO keyRO(env, key);
 
@@ -64,10 +73,10 @@ static jboolean com_android_net_module_util_BpfMap_nativeDeleteMapEntry(JNIEnv *
     // to ENOENT.
     int ret = bpf::deleteMapEntry(static_cast<int>(fd), keyRO.get());
 
-    return throwIfNotEnoent(env, "nativeDeleteMapEntry", ret, errno);
+    return throwIfNotEnoent(env, "deleteMapEntry", ret, errno);
 }
 
-static jboolean com_android_net_module_util_BpfMap_nativeGetNextMapKey(JNIEnv *env, jobject self,
+static jboolean com_android_net_module_util_BpfMap_getNextMapKey(JNIEnv *env, jobject clazz,
         jint fd, jbyteArray key, jbyteArray nextKey) {
     // If key is found, the operation returns zero and sets the next key pointer to the key of the
     // next element.  If key is not found, the operation returns zero and sets the next key pointer
@@ -83,10 +92,10 @@ static jboolean com_android_net_module_util_BpfMap_nativeGetNextMapKey(JNIEnv *e
         ret = bpf::getNextMapKey(static_cast<int>(fd), keyRO.get(), nextKeyRW.get());
     }
 
-    return throwIfNotEnoent(env, "nativeGetNextMapKey", ret, errno);
+    return throwIfNotEnoent(env, "getNextMapKey", ret, errno);
 }
 
-static jboolean com_android_net_module_util_BpfMap_nativeFindMapEntry(JNIEnv *env, jobject self,
+static jboolean com_android_net_module_util_BpfMap_findMapEntry(JNIEnv *env, jobject clazz,
         jint fd, jbyteArray key, jbyteArray value) {
     ScopedByteArrayRO keyRO(env, key);
     ScopedByteArrayRW valueRW(env, value);
@@ -95,7 +104,7 @@ static jboolean com_android_net_module_util_BpfMap_nativeFindMapEntry(JNIEnv *en
     // "value".  If no element is found, the operation returns -1 and sets errno to ENOENT.
     int ret = bpf::findMapEntry(static_cast<int>(fd), keyRO.get(), valueRW.get());
 
-    return throwIfNotEnoent(env, "nativeFindMapEntry", ret, errno);
+    return throwIfNotEnoent(env, "findMapEntry", ret, errno);
 }
 
 /*
@@ -103,16 +112,18 @@ static jboolean com_android_net_module_util_BpfMap_nativeFindMapEntry(JNIEnv *en
  */
 static const JNINativeMethod gMethods[] = {
     /* name, signature, funcPtr */
-    { "nativeBpfFdGet", "(Ljava/lang/String;I)I",
-        (void*) com_android_net_module_util_BpfMap_nativeBpfFdGet },
-    { "nativeWriteToMapEntry", "(I[B[BI)V",
-        (void*) com_android_net_module_util_BpfMap_nativeWriteToMapEntry },
-    { "nativeDeleteMapEntry", "(I[B)Z",
-        (void*) com_android_net_module_util_BpfMap_nativeDeleteMapEntry },
-    { "nativeGetNextMapKey", "(I[B[B)Z",
-        (void*) com_android_net_module_util_BpfMap_nativeGetNextMapKey },
-    { "nativeFindMapEntry", "(I[B[B)Z",
-        (void*) com_android_net_module_util_BpfMap_nativeFindMapEntry },
+    { "closeMap", "(I)I",
+        (void*) com_android_net_module_util_BpfMap_closeMap },
+    { "bpfFdGet", "(Ljava/lang/String;I)I",
+        (void*) com_android_net_module_util_BpfMap_bpfFdGet },
+    { "writeToMapEntry", "(I[B[BI)V",
+        (void*) com_android_net_module_util_BpfMap_writeToMapEntry },
+    { "deleteMapEntry", "(I[B)Z",
+        (void*) com_android_net_module_util_BpfMap_deleteMapEntry },
+    { "getNextMapKey", "(I[B[B)Z",
+        (void*) com_android_net_module_util_BpfMap_getNextMapKey },
+    { "findMapEntry", "(I[B[B)Z",
+        (void*) com_android_net_module_util_BpfMap_findMapEntry },
 
 };
 

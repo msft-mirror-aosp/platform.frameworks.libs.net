@@ -127,6 +127,7 @@ java_library {
         "//frameworks/libs/net/common/testutils:__subpackages__",
         "//packages/modules/Connectivity:__subpackages__",
         "//packages/modules/NetworkStack:__subpackages__",
+        "//frameworks/base/services/core",
     ],
     libs: [
         "androidx.annotation_annotation",
@@ -259,14 +260,23 @@ java_library {
     ],
     lint: { strict_updatability_linting: true },
 }
-
-java_library {
-    name: "net-utils-services-common",
+filegroup {
+    name: "net-utils-services-common-srcs",
     srcs: [
         "device/android/net/NetworkFactory.java",
         "device/android/net/NetworkFactoryImpl.java",
         "device/android/net/NetworkFactoryLegacyImpl.java",
         "device/android/net/NetworkFactoryShim.java",
+    ],
+    visibility: [
+        "//frameworks/base/services/net",
+    ],
+}
+
+java_library {
+    name: "net-utils-services-common",
+    srcs: [
+        ":net-utils-services-common-srcs",
     ],
     sdk_version: "module_current",
     min_sdk_version: "30",
@@ -282,7 +292,6 @@ java_library {
         "//apex_available:platform",
         "com.android.bluetooth",
         "com.android.tethering",
-        "com.android.wifi",
     ],
     visibility: [
         // TODO: remove after NetworkStatsService moves to the module.

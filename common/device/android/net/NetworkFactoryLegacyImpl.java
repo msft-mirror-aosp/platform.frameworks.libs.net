@@ -390,8 +390,9 @@ class NetworkFactoryLegacyImpl extends Handler
     }
 
     @Override public String toString() {
-        return "providerId=" + (mProvider != null ? mProvider.getProviderId() : "null")
-                + ", ScoreFilter=" + mScore + ", Filter=" + mCapabilityFilter
-                + ", requests=" + mNetworkRequests.size();
+        return "providerId="
+                + mProvider.getProviderId() + ", ScoreFilter="
+                + mScore + ", Filter=" + mCapabilityFilter + ", requests="
+                + mNetworkRequests.size();
     }
 }

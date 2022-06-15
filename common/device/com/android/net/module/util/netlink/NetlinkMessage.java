@@ -51,8 +51,8 @@ public class NetlinkMessage {
             return null;
         }
 
-        final int messageLength = NetlinkConstants.alignedLengthOf(nlmsghdr.nlmsg_len);
-        final int payloadLength = messageLength - StructNlMsgHdr.STRUCT_SIZE;
+        int payloadLength = NetlinkConstants.alignedLengthOf(nlmsghdr.nlmsg_len);
+        payloadLength -= StructNlMsgHdr.STRUCT_SIZE;
         if (payloadLength < 0 || payloadLength > byteBuffer.remaining()) {
             // Malformed message or runt buffer.  Pretend the buffer was consumed.
             byteBuffer.position(byteBuffer.limit());
@@ -68,22 +68,15 @@ public class NetlinkMessage {
         // Netlink family messages. The netlink family is required. Note that the reason for using
         // if-statement is that switch-case can't be used because the OsConstants.NETLINK_* are
         // not constant.
-        final NetlinkMessage parsed;
         if (nlFamily == OsConstants.NETLINK_ROUTE) {
-            parsed = parseRtMessage(nlmsghdr, byteBuffer);
+            return parseRtMessage(nlmsghdr, byteBuffer);
         } else if (nlFamily == OsConstants.NETLINK_INET_DIAG) {
-            parsed = parseInetDiagMessage(nlmsghdr, byteBuffer);
+            return parseInetDiagMessage(nlmsghdr, byteBuffer);
         } else if (nlFamily == OsConstants.NETLINK_NETFILTER) {
-            parsed = parseNfMessage(nlmsghdr, byteBuffer);
-        } else {
-            parsed = null;
+            return parseNfMessage(nlmsghdr, byteBuffer);
         }
 
-        // Advance to the end of the message, regardless of whether the parsing code consumed
-        // all of it or not.
-        byteBuffer.position(startPosition + messageLength);
-
-        return parsed;
+        return null;
     }
 
     @NonNull

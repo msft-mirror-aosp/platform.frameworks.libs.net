@@ -20,6 +20,7 @@ import android.system.ErrnoException;
 import androidx.annotation.NonNull;
 
 import java.util.NoSuchElementException;
+import java.util.function.BiConsumer;
 
 /**
  * The interface of BpfMap. This could be used to inject for testing.
@@ -28,7 +29,7 @@ import java.util.NoSuchElementException;
  * @param <K> the key of the map.
  * @param <V> the value of the map.
  */
-public interface IBpfMap<K extends Struct, V extends Struct> extends AutoCloseable {
+public interface IBpfMap<K extends Struct, V extends Struct> {
     /** Update an existing or create a new key -> value entry in an eBbpf map. */
     void updateEntry(K key, V value) throws ErrnoException;
 
