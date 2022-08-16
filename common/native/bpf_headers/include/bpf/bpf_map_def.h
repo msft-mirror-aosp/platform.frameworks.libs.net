@@ -48,6 +48,10 @@
 #define DEFAULT_SIZEOF_BPF_MAP_DEF 32       // v0.0 struct: enum (uint sized) + 7 uint
 #define DEFAULT_SIZEOF_BPF_PROG_DEF 20      // v0.0 struct: 4 uint + bool + 3 byte alignment pad
 
+// By default, unless otherwise specified, allow the use of features only supported by v0.28,
+// which first added working support for map uid != root
+#define COMPILE_FOR_BPFLOADER_VERSION 28u
+
 /*
  * The bpf_{map,prog}_def structures are compiled for different architectures.
  * Once by the BPF compiler for the BPF architecture, and once by a C++
@@ -111,6 +115,15 @@ _Static_assert(__alignof__(unsigned long long) == 8, "__alignof__ unsigned long 
 // BPF wants 8, but 32-bit x86 wants 4
 //_Static_assert(_Alignof(unsigned long long) == 8, "_Alignof unsigned long long != 8");
 
+// Length of strings (incl. selinux_context and pin_subdir)
+// in the bpf_map_def and bpf_prog_def structs.
+//
+// WARNING: YOU CANNOT *EVER* CHANGE THESE
+// as this would affect the structure size in backwards incompatible ways
+// and break mainline module loading on older Android T devices
+#define BPF_SELINUX_CONTEXT_CHAR_ARRAY_SIZE 32
+#define BPF_PIN_SUBDIR_CHAR_ARRAY_SIZE 32
+
 /*
  * Map structure to be used by Android eBPF C programs. The Android eBPF loader
  * uses this structure from eBPF object to create maps at boot time.
@@ -134,7 +147,7 @@ struct bpf_map_def {
     //   unsigned int inner_map_idx;
     //   unsigned int numa_node;
 
-    unsigned int uid;   // uid_t
+    unsigned int zero;  // uid_t, for compat with old (buggy) bpfloader must be AID_ROOT == 0
     unsigned int gid;   // gid_t
     unsigned int mode;  // mode_t
 
@@ -142,14 +155,35 @@ struct bpf_map_def {
     unsigned int bpfloader_min_ver;  // if missing, defaults to 0, ie. v0.0
     unsigned int bpfloader_max_ver;  // if missing, defaults to 0x10000, ie. v1.0
 
-    // The following fields were added in version 0.2
+    // The following fields were added in version 0.2 (S)
     // kernelVersion() must be >= min_kver and < max_kver
     unsigned int min_kver;
     unsigned int max_kver;
+
+    // The following fields were added in version 0.18 (T)
+    //
+    // These are fixed length strings, padded with null bytes
+    //
+    // Warning: supported values depend on .o location
+    // (additionally a newer Android OS and/or bpfloader may support more values)
+    //
+    // overrides default selinux context (which is based on pin subdir)
+    char selinux_context[BPF_SELINUX_CONTEXT_CHAR_ARRAY_SIZE];
+    //
+    // overrides default prefix (which is based on .o location)
+    char pin_subdir[BPF_PIN_SUBDIR_CHAR_ARRAY_SIZE];
+
+    bool shared;  // use empty string as 'file' component of pin path - allows cross .o map sharing
+    char pad0[3];  // manually pad up to 4 byte alignment, may be used for extensions in the future
+
+    unsigned int uid;   // uid_t
 };
 
+_Static_assert(sizeof(((struct bpf_map_def *)0)->selinux_context) == 32, "must be 32 bytes");
+_Static_assert(sizeof(((struct bpf_map_def *)0)->pin_subdir) == 32, "must be 32 bytes");
+
 // This needs to be updated whenever the above structure definition is expanded.
-_Static_assert(sizeof(struct bpf_map_def) == 48, "sizeof struct bpf_map_def != 48");
+_Static_assert(sizeof(struct bpf_map_def) == 120, "sizeof struct bpf_map_def != 120");
 _Static_assert(__alignof__(struct bpf_map_def) == 4, "__alignof__ struct bpf_map_def != 4");
 _Static_assert(_Alignof(struct bpf_map_def) == 4, "_Alignof struct bpf_map_def != 4");
 
@@ -168,10 +202,15 @@ struct bpf_prog_def {
     unsigned int bpfloader_min_ver;  // if missing, defaults to 0, ie. v0.0
     unsigned int bpfloader_max_ver;  // if missing, defaults to 0x10000, ie. v1.0
 
-    // No new fields in version 0.2
+    // The following fields were added in version 0.18, see description up above in bpf_map_def
+    char selinux_context[BPF_SELINUX_CONTEXT_CHAR_ARRAY_SIZE];
+    char pin_subdir[BPF_PIN_SUBDIR_CHAR_ARRAY_SIZE];
 };
 
+_Static_assert(sizeof(((struct bpf_prog_def *)0)->selinux_context) == 32, "must be 32 bytes");
+_Static_assert(sizeof(((struct bpf_prog_def *)0)->pin_subdir) == 32, "must be 32 bytes");
+
 // This needs to be updated whenever the above structure definition is expanded.
-_Static_assert(sizeof(struct bpf_prog_def) == 28, "sizeof struct bpf_prog_def != 28");
+_Static_assert(sizeof(struct bpf_prog_def) == 92, "sizeof struct bpf_prog_def != 92");
 _Static_assert(__alignof__(struct bpf_prog_def) == 4, "__alignof__ struct bpf_prog_def != 4");
 _Static_assert(_Alignof(struct bpf_prog_def) == 4, "_Alignof struct bpf_prog_def != 4");
