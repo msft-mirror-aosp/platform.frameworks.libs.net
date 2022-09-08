@@ -17,8 +17,6 @@
 package com.android.net.module.util;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import androidx.test.filters.SmallTest;
@@ -29,24 +27,16 @@ import org.junit.runner.RunWith;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.function.Consumer;
 
 @RunWith(AndroidJUnit4.class)
 @SmallTest
 public class SharedLogTest {
     private static final String TIMESTAMP_PATTERN = "\\d{2}:\\d{2}:\\d{2}";
     private static final String TIMESTAMP = "HH:MM:SS";
-    private static final String TAG = "top";
 
     @Test
     public void testBasicOperation() {
-        final SharedLog logTop = new SharedLog(TAG);
-        assertTrue(TAG.equals(logTop.getTag()));
-
+        final SharedLog logTop = new SharedLog("top");
         logTop.mark("first post!");
 
         final SharedLog logLevel2a = logTop.forSubComponent("twoA");
@@ -58,10 +48,8 @@ public class SharedLogTest {
 
         final SharedLog logLevel3 = logLevel2a.forSubComponent("three");
         logTop.log("still logging");
-        logLevel2b.e(new Exception("Got another exception"));
-        logLevel3.i("3 >> 2");
+        logLevel3.log("3 >> 2");
         logLevel2a.mark("ok: last post");
-        logTop.logf("finished!");
 
         final String[] expected = {
             " - MARK first post!",
@@ -71,53 +59,29 @@ public class SharedLogTest {
             " - [twoB] ERROR Wait, here's one: Test",
             " - [twoA] WARN second post?",
             " - still logging",
-            " - [twoB] ERROR java.lang.Exception: Got another exception",
             " - [twoA.three] 3 >> 2",
             " - [twoA] MARK ok: last post",
-            " - finished!",
         };
         // Verify the logs are all there and in the correct order.
-        assertDumpLogs(expected, logTop);
+        verifyLogLines(expected, logTop);
 
         // In fact, because they all share the same underlying LocalLog,
         // every subcomponent SharedLog's dump() is identical.
-        assertDumpLogs(expected, logLevel2a);
-        assertDumpLogs(expected, logLevel2b);
-        assertDumpLogs(expected, logLevel3);
+        verifyLogLines(expected, logLevel2a);
+        verifyLogLines(expected, logLevel2b);
+        verifyLogLines(expected, logLevel3);
     }
 
-    private static void assertDumpLogs(String[] expected, SharedLog log) {
-        verifyLogLines(expected, dump(log));
-        verifyLogLines(reverse(expected), reverseDump(log));
-    }
-
-    private static String dump(SharedLog log) {
-        return getSharedLogString(pw -> log.dump(null /* fd */, pw, null /* args */));
-    }
-
-    private static String reverseDump(SharedLog log) {
-        return getSharedLogString(pw -> log.reverseDump(pw));
-    }
-
-    private static String[] reverse(String[] ary) {
-        final List<String> ls = new ArrayList<>(Arrays.asList(ary));
-        Collections.reverse(ls);
-        return ls.toArray(new String[ary.length]);
-    }
-
-    private static String getSharedLogString(Consumer<PrintWriter> functor) {
+    private static void verifyLogLines(String[] expected, SharedLog log) {
         final ByteArrayOutputStream ostream = new ByteArrayOutputStream();
         final PrintWriter pw = new PrintWriter(ostream, true);
-        functor.accept(pw);
+        log.dump(null, pw, null);
 
         final String dumpOutput = ostream.toString();
-        assertNotNull(dumpOutput);
-        assertFalse("".equals(dumpOutput));
-        return dumpOutput;
-    }
+        assertTrue(dumpOutput != null);
+        assertTrue(!"".equals(dumpOutput));
 
-    private static void verifyLogLines(String[] expected, String gottenLogs) {
-        final String[] lines = gottenLogs.split("\n");
+        final String[] lines = dumpOutput.split("\n");
         assertEquals(expected.length, lines.length);
 
         for (int i = 0; i < expected.length; i++) {

@@ -50,20 +50,15 @@ class BpfMap {
     // (later on, for testing, we still make available a copy assignment operator)
     BpfMap<Key, Value>(const BpfMap<Key, Value>&) = delete;
 
-  private:
-    void abortOnKeyOrValueSizeMismatch() {
+  protected:
+    // flag must be within BPF_OBJ_FLAG_MASK, ie. 0, BPF_F_RDONLY, BPF_F_WRONLY
+    BpfMap<Key, Value>(const char* pathname, uint32_t flags) {
+        mMapFd.reset(mapRetrieve(pathname, flags));
         if (!mMapFd.ok()) abort();
         if (isAtLeastKernelVersion(4, 14, 0)) {
             if (bpfGetFdKeySize(mMapFd) != sizeof(Key)) abort();
             if (bpfGetFdValueSize(mMapFd) != sizeof(Value)) abort();
         }
-    }
-
-  protected:
-    // flag must be within BPF_OBJ_FLAG_MASK, ie. 0, BPF_F_RDONLY, BPF_F_WRONLY
-    BpfMap<Key, Value>(const char* pathname, uint32_t flags) {
-        mMapFd.reset(mapRetrieve(pathname, flags));
-        abortOnKeyOrValueSizeMismatch();
     }
 
   public:
@@ -122,11 +117,14 @@ class BpfMap {
         if (!mMapFd.ok()) {
             return ErrnoErrorf("Pinned map not accessible or does not exist: ({})", path);
         }
-        // Normally we should return an error here instead of calling abort,
-        // but this cannot happen at runtime without a massive code bug (K/V type mismatch)
-        // and as such it's better to just blow the system up and let the developer fix it.
-        // Crashes are much more likely to be noticed than logs and missing functionality.
-        abortOnKeyOrValueSizeMismatch();
+        if (isAtLeastKernelVersion(4, 14, 0)) {
+            // Normally we should return an error here instead of calling abort,
+            // but this cannot happen at runtime without a massive code bug (K/V type mismatch)
+            // and as such it's better to just blow the system up and let the developer fix it.
+            // Crashes are much more likely to be noticed than logs and missing functionality.
+            if (bpfGetFdKeySize(mMapFd) != sizeof(Key)) abort();
+            if (bpfGetFdValueSize(mMapFd) != sizeof(Value)) abort();
+        }
         return {};
     }
 
@@ -204,7 +202,11 @@ class BpfMap {
     // check BpfMap.isValid() and look at errno and see why systemcall() failed.
     [[clang::reinitializes]] void reset(int fd) {
         mMapFd.reset(fd);
-        if (mMapFd.ok()) abortOnKeyOrValueSizeMismatch();
+        if ((fd >= 0) && isAtLeastKernelVersion(4, 14, 0)) {
+            if (bpfGetFdKeySize(mMapFd) != sizeof(Key)) abort();
+            if (bpfGetFdValueSize(mMapFd) != sizeof(Value)) abort();
+            if (bpfGetFdMapFlags(mMapFd) != 0) abort(); // TODO: fix for BpfMapRO
+        }
     }
 #endif
 

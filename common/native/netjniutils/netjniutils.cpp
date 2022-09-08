@@ -15,7 +15,6 @@
 #define LOG_TAG "netjniutils"
 
 #include "netjniutils/netjniutils.h"
-#include <android-modules-utils/sdk_level.h>
 
 #include <dlfcn.h>
 #include <stdbool.h>
@@ -30,6 +29,27 @@ namespace netjniutils {
 
 namespace {
 
+bool IsAtLeastS() {
+  // TODO(b/158749603#comment19): move to android::modules::sdklevel::IsAtLeastS().
+  int api_level = android_get_device_api_level();
+
+  // Guarded check for branches that do not have __ANDROID_API_S__.
+#ifdef __ANDROID_API_S__
+  if (api_level >= __ANDROID_API_S__) {
+    return true;
+  }
+#endif
+
+  if (api_level < __ANDROID_API_R__) {
+    return false;
+  }
+
+  // Device looks like R or above, check codename as it could be (S or above).
+  static constexpr const char* kCodenameProperty = "ro.build.version.codename";
+  char codename[PROP_VALUE_MAX] = { 0 };
+  return (__system_property_get(kCodenameProperty, codename) > 0 &&
+          codename[0] >= 'S' && codename[1] == '\0');
+}
 
 int GetNativeFileDescriptorWithoutNdk(JNIEnv* env, jobject javaFd) {
   // Prior to Android S, we need to find the descriptor field in the FileDescriptor class. The
@@ -72,8 +92,7 @@ int GetNativeFileDescriptorWithNdk(JNIEnv* env, jobject javaFd) {
 }  //  namespace
 
 int GetNativeFileDescriptor(JNIEnv* env, jobject javaFd) {
-  static const bool preferNdkFileDescriptorApi = []() -> bool
-   { return android::modules::sdklevel::IsAtLeastS(); }();
+  static const bool preferNdkFileDescriptorApi = []() -> bool { return IsAtLeastS(); }();
   if (preferNdkFileDescriptorApi) {
     return GetNativeFileDescriptorWithNdk(env, javaFd);
   } else {

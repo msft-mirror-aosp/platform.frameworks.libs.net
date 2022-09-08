@@ -22,7 +22,6 @@ import static com.android.net.module.util.netlink.NetlinkConstants.RTM_DELNEIGH;
 import static com.android.net.module.util.netlink.NetlinkConstants.hexify;
 import static com.android.net.module.util.netlink.NetlinkConstants.stringForNlMsgType;
 
-import android.annotation.NonNull;
 import android.net.MacAddress;
 import android.os.Handler;
 import android.system.ErrnoException;
@@ -81,17 +80,15 @@ public class IpNeighborMonitor extends NetlinkMonitor {
      * An event about a neighbor.
      */
     public static class NeighborEvent {
-        public final long elapsedMs;
-        public final short msgType;
-        public final int ifindex;
-        @NonNull
-        public final InetAddress ip;
-        public final short nudState;
-        @NonNull
-        public final MacAddress macAddr;
+        final long elapsedMs;
+        final short msgType;
+        final int ifindex;
+        final InetAddress ip;
+        final short nudState;
+        final MacAddress macAddr;
 
-        public NeighborEvent(long elapsedMs, short msgType, int ifindex, @NonNull InetAddress ip,
-                short nudState, @NonNull MacAddress macAddr) {
+        public NeighborEvent(long elapsedMs, short msgType, int ifindex, InetAddress ip,
+                short nudState, MacAddress macAddr) {
             this.elapsedMs = elapsedMs;
             this.msgType = msgType;
             this.ifindex = ifindex;
@@ -104,7 +101,7 @@ public class IpNeighborMonitor extends NetlinkMonitor {
             return (msgType != RTM_DELNEIGH) && StructNdMsg.isNudStateConnected(nudState);
         }
 
-        public boolean isValid() {
+        boolean isValid() {
             return (msgType != RTM_DELNEIGH) && StructNdMsg.isNudStateValid(nudState);
         }
 
