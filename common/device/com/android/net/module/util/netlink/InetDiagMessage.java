@@ -106,24 +106,21 @@ public class InetDiagMessage extends NetlinkMessage {
         return bytes;
     }
 
-    public StructInetDiagMsg inetDiagMsg;
+    public StructInetDiagMsg mStructInetDiagMsg;
 
     private InetDiagMessage(@NonNull StructNlMsgHdr header) {
         super(header);
-        inetDiagMsg = new StructInetDiagMsg();
+        mStructInetDiagMsg = new StructInetDiagMsg();
     }
 
     /**
      * Parse an inet_diag_req_v2 message from buffer.
      */
-    @Nullable
+    @NonNull
     public static InetDiagMessage parse(@NonNull StructNlMsgHdr header,
             @NonNull ByteBuffer byteBuffer) {
         final InetDiagMessage msg = new InetDiagMessage(header);
-        msg.inetDiagMsg = StructInetDiagMsg.parse(byteBuffer);
-        if (msg.inetDiagMsg == null) {
-            return null;
-        }
+        msg.mStructInetDiagMsg = StructInetDiagMsg.parse(byteBuffer);
         return msg;
     }
 
@@ -136,15 +133,12 @@ public class InetDiagMessage extends NetlinkMessage {
         ByteBuffer response = NetlinkSocket.recvMessage(fd, DEFAULT_RECV_BUFSIZE, TIMEOUT_MS);
 
         final NetlinkMessage nlMsg = NetlinkMessage.parse(response, NETLINK_INET_DIAG);
-        if (nlMsg == null) {
-            return INVALID_UID;
-        }
         final StructNlMsgHdr hdr = nlMsg.getHeader();
         if (hdr.nlmsg_type == NetlinkConstants.NLMSG_DONE) {
             return INVALID_UID;
         }
         if (nlMsg instanceof InetDiagMessage) {
-            return ((InetDiagMessage) nlMsg).inetDiagMsg.idiag_uid;
+            return ((InetDiagMessage) nlMsg).mStructInetDiagMsg.idiag_uid;
         }
         return INVALID_UID;
     }
@@ -234,7 +228,7 @@ public class InetDiagMessage extends NetlinkMessage {
                 + "nlmsghdr{"
                 + (mHeader == null ? "" : mHeader.toString(NETLINK_INET_DIAG)) + "}, "
                 + "inet_diag_msg{"
-                + (inetDiagMsg == null ? "" : inetDiagMsg.toString()) + "} "
+                + (mStructInetDiagMsg == null ? "" : mStructInetDiagMsg.toString()) + "} "
                 + "}";
     }
 }
