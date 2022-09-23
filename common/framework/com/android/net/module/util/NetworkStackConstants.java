@@ -127,6 +127,14 @@ public final class NetworkStackConstants {
             (Inet6Address) InetAddresses.parseNumericAddress("ff02::3");
 
     /**
+     * ICMP constants.
+     *
+     * See also:
+     *     - https://tools.ietf.org/html/rfc792
+     */
+    public static final int ICMP_CHECKSUM_OFFSET = 2;
+
+    /**
      * ICMPv6 constants.
      *
      * See also:
@@ -227,6 +235,35 @@ public final class NetworkStackConstants {
     // {@link android.net.TrafficStats#TAG_NETWORK_STACK_IMPERSONATION_RANGE_END}.
     public static final int TAG_SYSTEM_PROBE = 0xFFFFFF81;
     public static final int TAG_SYSTEM_DNS = 0xFFFFFF82;
+
+    /**
+     * A test URL used to override configuration settings and overlays for the network validation
+     * HTTPS URL, when set in {@link android.provider.DeviceConfig} configuration.
+     *
+     * <p>This URL will be ignored if the host is not "localhost" (it can only be used to test with
+     * a local test server), and must not be set in production scenarios (as enforced by CTS tests).
+     *
+     * <p>{@link #TEST_URL_EXPIRATION_TIME} must also be set to use this setting.
+     */
+    public static final String TEST_CAPTIVE_PORTAL_HTTPS_URL = "test_captive_portal_https_url";
+    /**
+     * A test URL used to override configuration settings and overlays for the network validation
+     * HTTP URL, when set in {@link android.provider.DeviceConfig} configuration.
+     *
+     * <p>This URL will be ignored if the host is not "localhost" (it can only be used to test with
+     * a local test server), and must not be set in production scenarios (as enforced by CTS tests).
+     *
+     * <p>{@link #TEST_URL_EXPIRATION_TIME} must also be set to use this setting.
+     */
+    public static final String TEST_CAPTIVE_PORTAL_HTTP_URL = "test_captive_portal_http_url";
+    /**
+     * Expiration time of the test URL, in ms, relative to {@link System#currentTimeMillis()}.
+     *
+     * <p>After this expiration time, test URLs will be ignored. They will also be ignored if
+     * the expiration time is more than 10 minutes in the future, to avoid misconfiguration
+     * following test runs.
+     */
+    public static final String TEST_URL_EXPIRATION_TIME = "test_url_expiration_time";
 
     // TODO: Move to Inet4AddressUtils
     // See aosp/1455936: NetworkStackConstants can't depend on it as it causes jarjar-related issues
