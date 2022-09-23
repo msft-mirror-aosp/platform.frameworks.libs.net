@@ -37,6 +37,7 @@ java_library {
       "device/com/android/net/module/util/DeviceConfigUtils.java",
       "device/com/android/net/module/util/FdEventsReader.java",
       "device/com/android/net/module/util/HexDump.java",
+      "device/com/android/net/module/util/NetworkMonitorUtils.java",
       "device/com/android/net/module/util/PacketReader.java",
       "device/com/android/net/module/util/SharedLog.java",
       // This library is used by system modules, for which the system health impact of Kotlin
@@ -69,6 +70,7 @@ java_library {
   libs: [
       "androidx.annotation_annotation",
       "framework-annotations-lib",
+      "framework-connectivity.stubs.module_lib",
   ],
   lint: { strict_updatability_linting: true },
 }
@@ -94,7 +96,10 @@ java_library {
     visibility: [
         "//packages/services/Iwlan:__subpackages__",
     ],
-    libs: ["framework-annotations-lib"],
+    libs: [
+        "framework-annotations-lib",
+        "framework-connectivity.stubs.module_lib",
+    ],
 }
 
 filegroup {
@@ -111,6 +116,7 @@ java_library {
     name: "net-utils-device-common-bpf",
     srcs: [
         "device/com/android/net/module/util/BpfBitmap.java",
+        "device/com/android/net/module/util/BpfDump.java",
         "device/com/android/net/module/util/BpfMap.java",
         "device/com/android/net/module/util/BpfUtils.java",
         "device/com/android/net/module/util/HexDump.java",
@@ -118,7 +124,6 @@ java_library {
         "device/com/android/net/module/util/JniUtil.java",
         "device/com/android/net/module/util/Struct.java",
         "device/com/android/net/module/util/TcUtils.java",
-        "device/com/android/net/module/util/bpf/*.java",
     ],
     sdk_version: "module_current",
     min_sdk_version: "29",
@@ -232,7 +237,9 @@ java_library {
         ":net-utils-framework-common-srcs",
     ],
     sdk_version: "module_current",
+    min_sdk_version: "29",
     libs: [
+        "androidx.annotation_annotation",
         "framework-annotations-lib",
         "framework-connectivity.stubs.module_lib",
         "framework-connectivity-t.stubs.module_lib",
@@ -280,7 +287,7 @@ java_library {
     // TODO: remove "apex_available:platform".
     apex_available: [
         "//apex_available:platform",
-        "com.android.bluetooth",
+        "com.android.btservices",
         "com.android.tethering",
         "com.android.wifi",
     ],
@@ -290,6 +297,7 @@ java_library {
         "//packages/modules/Connectivity/service",
         "//packages/modules/Connectivity/tests:__subpackages__",
         "//packages/modules/Bluetooth/android/app",
+        "//packages/modules/Wifi/service:__subpackages__",
     ],
     lint: { strict_updatability_linting: true },
 }
