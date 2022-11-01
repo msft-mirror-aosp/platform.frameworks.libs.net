@@ -18,7 +18,6 @@ package com.android.net.module.util;
 
 import static android.net.DnsResolver.TYPE_A;
 import static android.net.DnsResolver.TYPE_AAAA;
-import static android.net.DnsResolver.TYPE_CNAME;
 
 import static com.android.internal.annotations.VisibleForTesting.Visibility.PACKAGE;
 import static com.android.internal.annotations.VisibleForTesting.Visibility.PRIVATE;
@@ -53,6 +52,12 @@ import java.util.Objects;
  * @hide
  */
 public abstract class DnsPacket {
+    /**
+     * Type of the canonical name for an alias. Refer to RFC 1035 section 3.2.2.
+     */
+    // TODO: Define the constant as a public constant in DnsResolver since it can never change.
+    private static final int TYPE_CNAME = 5;
+
     /**
      * Thrown when parsing packet failed.
      */
