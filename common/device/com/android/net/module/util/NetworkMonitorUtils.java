@@ -16,7 +16,6 @@
 
 package com.android.net.module.util;
 
-import static android.net.NetworkCapabilities.NET_CAPABILITY_DUN;
 import static android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET;
 import static android.net.NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED;
 import static android.net.NetworkCapabilities.NET_CAPABILITY_NOT_VPN;
@@ -103,12 +102,9 @@ public class NetworkMonitorUtils {
      *                                networks.
      * @param nc Network capabilities of the network to test.
      */
-    public static boolean isValidationRequired(boolean isDunValidationRequired,
-            boolean isVpnValidationRequired,
+    public static boolean isValidationRequired(boolean isVpnValidationRequired,
             @NonNull final NetworkCapabilities nc) {
-        if (isDunValidationRequired && nc.hasCapability(NET_CAPABILITY_DUN)) {
-            return true;
-        }
+        // TODO: Consider requiring validation for DUN networks.
         if (!nc.hasCapability(NET_CAPABILITY_NOT_VPN)) {
             return isVpnValidationRequired;
         }
