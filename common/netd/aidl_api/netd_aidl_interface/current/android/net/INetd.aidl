@@ -168,7 +168,6 @@ interface INetd {
   void networkCreate(in android.net.NativeNetworkConfig config);
   void networkAddUidRangesParcel(in android.net.netd.aidl.NativeUidRangeConfig uidRangesConfig);
   void networkRemoveUidRangesParcel(in android.net.netd.aidl.NativeUidRangeConfig uidRangesConfig);
-  void ipSecMigrate(in android.net.IpSecMigrateInfoParcel migrateInfo);
   const int IPV4 = 4;
   const int IPV6 = 6;
   const int CONF = 1;
@@ -220,6 +219,4 @@ interface INetd {
   const String IF_FLAG_POINTOPOINT = "point-to-point";
   const String IF_FLAG_RUNNING = "running";
   const String IF_FLAG_MULTICAST = "multicast";
-  const int IPSEC_DIRECTION_IN = 0;
-  const int IPSEC_DIRECTION_OUT = 1;
 }
