@@ -167,8 +167,8 @@ static void (*bpf_ringbuf_submit_unsafe)(const void* data, __u64 flags) = (void*
       .uid = (usr),                                                         \
       .gid = (grp),                                                         \
       .mode = (md),                                                         \
-      .bpfloader_min_ver = DEFAULT_BPFLOADER_MIN_VER,                       \
-      .bpfloader_max_ver = DEFAULT_BPFLOADER_MAX_VER,                       \
+      .bpfloader_min_ver = BPFLOADER_MIN_VER,                               \
+      .bpfloader_max_ver = BPFLOADER_MAX_VER,                               \
       .min_kver = (minkver),                                                \
       .max_kver = (maxkver),                                                \
       .selinux_context = (selinux),                                         \
@@ -277,6 +277,11 @@ static void (*bpf_ringbuf_submit_unsafe)(const void* data, __u64 flags) = (void*
     DEFINE_BPF_MAP_UGM(the_map, TYPE, KeyType, ValueType, num_entries, \
                        DEFAULT_BPF_MAP_UID, gid, 0660)
 
+// LLVM eBPF builtins: they directly generate BPF_LD_ABS/BPF_LD_IND (skb may be ignored?)
+unsigned long long load_byte(void* skb, unsigned long long off) asm("llvm.bpf.load.byte");
+unsigned long long load_half(void* skb, unsigned long long off) asm("llvm.bpf.load.half");
+unsigned long long load_word(void* skb, unsigned long long off) asm("llvm.bpf.load.word");
+
 static int (*bpf_probe_read)(void* dst, int size, void* unsafe_ptr) = (void*) BPF_FUNC_probe_read;
 static int (*bpf_probe_read_str)(void* dst, int size, void* unsafe_ptr) = (void*) BPF_FUNC_probe_read_str;
 static unsigned long long (*bpf_ktime_get_ns)(void) = (void*) BPF_FUNC_ktime_get_ns;
@@ -296,8 +301,8 @@ static long (*bpf_get_current_comm)(void* buf, uint32_t buf_size) = (void*) BPF_
             .min_kver = (min_kv),                                                                  \
             .max_kver = (max_kv),                                                                  \
             .optional = (opt),                                                                     \
-            .bpfloader_min_ver = DEFAULT_BPFLOADER_MIN_VER,                                        \
-            .bpfloader_max_ver = DEFAULT_BPFLOADER_MAX_VER,                                        \
+            .bpfloader_min_ver = BPFLOADER_MIN_VER,                                                \
+            .bpfloader_max_ver = BPFLOADER_MAX_VER,                                                \
             .selinux_context = selinux,                                                            \
             .pin_subdir = pindir,                                                                  \
     };                                                                                             \
