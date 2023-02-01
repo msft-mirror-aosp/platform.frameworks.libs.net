@@ -223,9 +223,13 @@ public class DeviceConfigUtilsTest {
                 TEST_EXPERIMENT_FLAG));
         assertFalse(DeviceConfigUtils.isFeatureEnabled(mContext, TEST_NAME_SPACE,
                 TEST_EXPERIMENT_FLAG, TEST_APEX_NAME, false /* defaultEnabled */));
+        assertTrue(DeviceConfigUtils.isFeatureEnabled(mContext, TEST_NAME_SPACE,
+                TEST_EXPERIMENT_FLAG, TEST_APEX_NAME, true /* defaultEnabled */));
         doThrow(NameNotFoundException.class).when(mPm).getModuleInfo(anyString(), anyInt());
         assertFalse(DeviceConfigUtils.isFeatureEnabled(mContext, TEST_NAME_SPACE,
                 TEST_EXPERIMENT_FLAG, TEST_APEX_NAME, false /* defaultEnabled */));
+        assertTrue(DeviceConfigUtils.isFeatureEnabled(mContext, TEST_NAME_SPACE,
+                TEST_EXPERIMENT_FLAG, TEST_APEX_NAME, true /* defaultEnabled */));
     }
 
 
@@ -282,5 +286,14 @@ public class DeviceConfigUtilsTest {
         assertFalse(DeviceConfigUtils.getResBooleanConfig(mContext, someResId, false));
         doThrow(new Resources.NotFoundException()).when(mResources).getBoolean(someResId);
         assertFalse(DeviceConfigUtils.getResBooleanConfig(mContext, someResId, false));
+    }
+
+    @Test
+    public void testGetResIntegerConfig() {
+        final int someResId = 1234;
+        doReturn(2097).when(mResources).getInteger(someResId);
+        assertEquals(2097, DeviceConfigUtils.getResIntegerConfig(mContext, someResId, 2098));
+        doThrow(new Resources.NotFoundException()).when(mResources).getInteger(someResId);
+        assertEquals(2098, DeviceConfigUtils.getResIntegerConfig(mContext, someResId, 2098));
     }
 }

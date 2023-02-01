@@ -19,11 +19,12 @@ package com.android.net.module.util.netlink;
 import static android.os.Process.INVALID_UID;
 import static android.system.OsConstants.AF_INET;
 import static android.system.OsConstants.AF_INET6;
+import static android.system.OsConstants.IPPROTO_TCP;
 import static android.system.OsConstants.IPPROTO_UDP;
 import static android.system.OsConstants.NETLINK_INET_DIAG;
 
 import static com.android.net.module.util.netlink.NetlinkConstants.SOCK_DIAG_BY_FAMILY;
-import static com.android.net.module.util.netlink.NetlinkSocket.DEFAULT_RECV_BUFSIZE;
+import static com.android.net.module.util.netlink.NetlinkUtils.DEFAULT_RECV_BUFSIZE;
 import static com.android.net.module.util.netlink.StructNlMsgHdr.NLM_F_DUMP;
 import static com.android.net.module.util.netlink.StructNlMsgHdr.NLM_F_REQUEST;
 
@@ -106,21 +107,24 @@ public class InetDiagMessage extends NetlinkMessage {
         return bytes;
     }
 
-    public StructInetDiagMsg mStructInetDiagMsg;
+    public StructInetDiagMsg inetDiagMsg;
 
     private InetDiagMessage(@NonNull StructNlMsgHdr header) {
         super(header);
-        mStructInetDiagMsg = new StructInetDiagMsg();
+        inetDiagMsg = new StructInetDiagMsg();
     }
 
     /**
      * Parse an inet_diag_req_v2 message from buffer.
      */
-    @NonNull
+    @Nullable
     public static InetDiagMessage parse(@NonNull StructNlMsgHdr header,
             @NonNull ByteBuffer byteBuffer) {
         final InetDiagMessage msg = new InetDiagMessage(header);
-        msg.mStructInetDiagMsg = StructInetDiagMsg.parse(byteBuffer);
+        msg.inetDiagMsg = StructInetDiagMsg.parse(byteBuffer);
+        if (msg.inetDiagMsg == null) {
+            return null;
+        }
         return msg;
     }
 
@@ -129,16 +133,19 @@ public class InetDiagMessage extends NetlinkMessage {
                                          FileDescriptor fd)
             throws ErrnoException, InterruptedIOException {
         byte[] msg = inetDiagReqV2(protocol, local, remote, family, flags);
-        NetlinkSocket.sendMessage(fd, msg, 0, msg.length, TIMEOUT_MS);
-        ByteBuffer response = NetlinkSocket.recvMessage(fd, DEFAULT_RECV_BUFSIZE, TIMEOUT_MS);
+        NetlinkUtils.sendMessage(fd, msg, 0, msg.length, TIMEOUT_MS);
+        ByteBuffer response = NetlinkUtils.recvMessage(fd, DEFAULT_RECV_BUFSIZE, TIMEOUT_MS);
 
         final NetlinkMessage nlMsg = NetlinkMessage.parse(response, NETLINK_INET_DIAG);
+        if (nlMsg == null) {
+            return INVALID_UID;
+        }
         final StructNlMsgHdr hdr = nlMsg.getHeader();
         if (hdr.nlmsg_type == NetlinkConstants.NLMSG_DONE) {
             return INVALID_UID;
         }
         if (nlMsg instanceof InetDiagMessage) {
-            return ((InetDiagMessage) nlMsg).mStructInetDiagMsg.idiag_uid;
+            return ((InetDiagMessage) nlMsg).inetDiagMsg.idiag_uid;
         }
         return INVALID_UID;
     }
@@ -204,8 +211,8 @@ public class InetDiagMessage extends NetlinkMessage {
         int uid = INVALID_UID;
         FileDescriptor fd = null;
         try {
-            fd = NetlinkSocket.forProto(NETLINK_INET_DIAG);
-            NetlinkSocket.connectToKernel(fd);
+            fd = NetlinkUtils.netlinkSocketForProto(NETLINK_INET_DIAG);
+            NetlinkUtils.connectSocketToNetlink(fd);
             uid = lookupUid(protocol, local, remote, fd);
         } catch (ErrnoException | SocketException | IllegalArgumentException
                 | InterruptedIOException e) {
@@ -222,13 +229,27 @@ public class InetDiagMessage extends NetlinkMessage {
         return uid;
     }
 
+    /**
+     * Construct an inet_diag_req_v2 message for querying alive TCP sockets from kernel.
+     */
+    public static byte[] buildInetDiagReqForAliveTcpSockets(int family) {
+        return inetDiagReqV2(IPPROTO_TCP,
+                null /* local addr */,
+                null /* remote addr */,
+                family,
+                (short) (StructNlMsgHdr.NLM_F_REQUEST | StructNlMsgHdr.NLM_F_DUMP) /* flag */,
+                0 /* pad */,
+                1 << NetlinkConstants.INET_DIAG_MEMINFO /* idiagExt */,
+                NetlinkUtils.TCP_MONITOR_STATE_FILTER);
+    }
+
     @Override
     public String toString() {
         return "InetDiagMessage{ "
                 + "nlmsghdr{"
                 + (mHeader == null ? "" : mHeader.toString(NETLINK_INET_DIAG)) + "}, "
                 + "inet_diag_msg{"
-                + (mStructInetDiagMsg == null ? "" : mStructInetDiagMsg.toString()) + "} "
+                + (inetDiagMsg == null ? "" : inetDiagMsg.toString()) + "} "
                 + "}";
     }
 }
