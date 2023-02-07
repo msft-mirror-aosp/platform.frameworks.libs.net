@@ -22,29 +22,29 @@ import android.net.LinkProperties
 import android.net.Network
 import android.net.NetworkCapabilities
 import com.android.testutils.RecorderCallback.CallbackEntry
+import com.android.testutils.RecorderCallback.CallbackEntry.Available
+import com.android.testutils.RecorderCallback.CallbackEntry.BlockedStatus
+import com.android.testutils.RecorderCallback.CallbackEntry.CapabilitiesChanged
 import com.android.testutils.RecorderCallback.CallbackEntry.Companion.AVAILABLE
 import com.android.testutils.RecorderCallback.CallbackEntry.Companion.BLOCKED_STATUS
 import com.android.testutils.RecorderCallback.CallbackEntry.Companion.LINK_PROPERTIES_CHANGED
 import com.android.testutils.RecorderCallback.CallbackEntry.Companion.LOSING
-import com.android.testutils.RecorderCallback.CallbackEntry.Companion.NETWORK_CAPS_UPDATED
 import com.android.testutils.RecorderCallback.CallbackEntry.Companion.LOST
+import com.android.testutils.RecorderCallback.CallbackEntry.Companion.NETWORK_CAPS_UPDATED
 import com.android.testutils.RecorderCallback.CallbackEntry.Companion.RESUMED
 import com.android.testutils.RecorderCallback.CallbackEntry.Companion.SUSPENDED
 import com.android.testutils.RecorderCallback.CallbackEntry.Companion.UNAVAILABLE
-import com.android.testutils.RecorderCallback.CallbackEntry.Available
-import com.android.testutils.RecorderCallback.CallbackEntry.BlockedStatus
-import com.android.testutils.RecorderCallback.CallbackEntry.CapabilitiesChanged
-import org.junit.Before
-import org.junit.Test
-import org.junit.runner.RunWith
-import org.junit.runners.JUnit4
-import org.junit.Assume.assumeTrue
 import kotlin.reflect.KClass
 import kotlin.test.assertEquals
 import kotlin.test.assertFails
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.test.fail
+import org.junit.Assume.assumeTrue
+import org.junit.Before
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.junit.runners.JUnit4
 
 const val SHORT_TIMEOUT_MS = 20L
 const val DEFAULT_LINGER_DELAY_MS = 30000
@@ -121,20 +121,16 @@ class TestableNetworkCallbackTest {
         mCallback.assertNoCallback(SHORT_TIMEOUT_MS)
         mCallback.onAvailable(Network(100))
         assertFails { mCallback.assertNoCallback(SHORT_TIMEOUT_MS) }
-    }
-
-    @Test
-    fun testAssertNoCallbackThat() {
         val net = Network(101)
-        mCallback.assertNoCallbackThat { it is Available }
+        mCallback.assertNoCallback { it is Available }
         mCallback.onAvailable(net)
         // Expect no blocked status change. Receive other callback does not fail the test.
-        mCallback.assertNoCallbackThat { it is BlockedStatus }
+        mCallback.assertNoCallback { it is BlockedStatus }
         mCallback.onBlockedStatusChanged(net, true)
-        assertFails { mCallback.assertNoCallbackThat { it is BlockedStatus } }
+        assertFails { mCallback.assertNoCallback { it is BlockedStatus } }
         mCallback.onBlockedStatusChanged(net, false)
         mCallback.onCapabilitiesChanged(net, NetworkCapabilities())
-        assertFails { mCallback.assertNoCallbackThat { it is CapabilitiesChanged } }
+        assertFails { mCallback.assertNoCallback { it is CapabilitiesChanged } }
     }
 
     @Test
@@ -183,33 +179,31 @@ class TestableNetworkCallbackTest {
     }
 
     @Test
-    fun testCapabilitiesThat() {
+    fun testExpectCaps() {
         val net = Network(101)
         val netCaps = NetworkCapabilities().addCapability(NOT_METERED).addTransportType(WIFI)
         // Check that expecting capabilitiesThat anything fails when no callback has been received.
-        assertFails { mCallback.expectCapabilitiesThat(net, SHORT_TIMEOUT_MS) { true } }
+        assertFails { mCallback.expectCaps(net, SHORT_TIMEOUT_MS) { true } }
 
         // Basic test for true and false
         mCallback.onCapabilitiesChanged(net, netCaps)
-        mCallback.expectCapabilitiesThat(net) { true }
+        mCallback.expectCaps(net) { true }
         mCallback.onCapabilitiesChanged(net, netCaps)
-        assertFails { mCallback.expectCapabilitiesThat(net, SHORT_TIMEOUT_MS) { false } }
+        assertFails { mCallback.expectCaps(net, SHORT_TIMEOUT_MS) { false } }
 
         // Try a positive and a negative case
         mCallback.onCapabilitiesChanged(net, netCaps)
-        mCallback.expectCapabilitiesThat(net) { caps ->
-            caps.hasCapability(NOT_METERED) &&
-                    caps.hasTransport(WIFI) &&
-                    !caps.hasTransport(CELLULAR)
+        mCallback.expectCaps(net) {
+            it.hasCapability(NOT_METERED) && it.hasTransport(WIFI) && !it.hasTransport(CELLULAR)
         }
         mCallback.onCapabilitiesChanged(net, netCaps)
-        assertFails { mCallback.expectCapabilitiesThat(net, SHORT_TIMEOUT_MS) { caps ->
-            caps.hasTransport(CELLULAR)
-        } }
+        assertFails { mCallback.expectCaps(net, SHORT_TIMEOUT_MS) { it.hasTransport(CELLULAR) } }
 
         // Try a matching callback on the wrong network
         mCallback.onCapabilitiesChanged(net, netCaps)
-        assertFails { mCallback.expectCapabilitiesThat(Network(100), SHORT_TIMEOUT_MS) { true } }
+        assertFails {
+            mCallback.expectCaps(Network(100), SHORT_TIMEOUT_MS) { true }
+        }
     }
 
     @Test
