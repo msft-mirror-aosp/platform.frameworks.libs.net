@@ -38,7 +38,7 @@ namespace bpf {
  * all unused portions are zero.  It will fail with E2BIG if we don't fully zero bpf_attr.
  */
 
-inline int bpf(int cmd, const bpf_attr& attr) {
+inline int bpf(enum bpf_cmd cmd, const bpf_attr& attr) {
     return syscall(__NR_bpf, cmd, &attr, sizeof(attr));
 }
 
@@ -148,6 +148,18 @@ inline int detachSingleProgram(bpf_attach_type type, const BPF_FD_TYPE prog_fd,
                                         .attach_bpf_fd = BPF_FD_TO_U32(prog_fd),
                                         .attach_type = type,
                                 });
+}
+
+// Available in 4.12 and later kernels.
+inline int runProgram(const BPF_FD_TYPE prog_fd, const void* data,
+                      const uint32_t data_size) {
+    return bpf(BPF_PROG_RUN, {
+                                     .test = {
+                                             .prog_fd = BPF_FD_TO_U32(prog_fd),
+                                             .data_in = ptr_to_u64(data),
+                                             .data_size_in = data_size,
+                                     },
+                             });
 }
 
 // BPF_OBJ_GET_INFO_BY_FD requires 4.14+ kernel
