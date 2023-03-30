@@ -26,43 +26,40 @@ import android.util.Log;
 
 import java.io.FileDescriptor;
 import java.io.IOException;
-import java.util.Objects;
 
 public class PacketReflector extends Thread {
 
-    static final int IPV4_HEADER_LENGTH = 20;
-    static final int IPV6_HEADER_LENGTH = 40;
+    private static final int IPV4_HEADER_LENGTH = 20;
+    private static final int IPV6_HEADER_LENGTH = 40;
 
-    static final int IPV4_ADDR_OFFSET = 12;
-    static final int IPV6_ADDR_OFFSET = 8;
-    static final int IPV4_ADDR_LENGTH = 4;
-    static final int IPV6_ADDR_LENGTH = 16;
+    private static final int IPV4_ADDR_OFFSET = 12;
+    private static final int IPV6_ADDR_OFFSET = 8;
+    private static final int IPV4_ADDR_LENGTH = 4;
+    private static final int IPV6_ADDR_LENGTH = 16;
 
-    static final int IPV4_PROTO_OFFSET = 9;
-    static final int IPV6_PROTO_OFFSET = 6;
+    private static final int IPV4_PROTO_OFFSET = 9;
+    private static final int IPV6_PROTO_OFFSET = 6;
 
-    static final byte IPPROTO_ICMP = 1;
-    static final byte IPPROTO_TCP = 6;
-    static final byte IPPROTO_UDP = 17;
+    private static final byte IPPROTO_ICMP = 1;
+    private static final byte IPPROTO_TCP = 6;
+    private static final byte IPPROTO_UDP = 17;
     private static final byte IPPROTO_ICMPV6 = 58;
 
     private static final int ICMP_HEADER_LENGTH = 8;
-    static final int TCP_HEADER_LENGTH = 20;
-    static final int UDP_HEADER_LENGTH = 8;
+    private static final int TCP_HEADER_LENGTH = 20;
+    private static final int UDP_HEADER_LENGTH = 8;
 
     private static final byte ICMP_ECHO = 8;
     private static final byte ICMP_ECHOREPLY = 0;
 
     private static String TAG = "PacketReflector";
 
-    @NonNull
-    private final FileDescriptor mFd;
-    @NonNull
-    private final byte[] mBuf;
+    @NonNull private FileDescriptor mFd;
+    @NonNull private byte[] mBuf;
 
     public PacketReflector(@NonNull FileDescriptor fd, int mtu) {
         super("PacketReflector");
-        mFd = Objects.requireNonNull(fd);
+        mFd = fd;
         mBuf = new byte[mtu];
     }
 
@@ -143,7 +140,7 @@ public class PacketReflector extends Thread {
         writePacket(buf, len);
 
         // The device should have replied, and buf should now contain a ping response.
-        int received = PacketReflectorUtil.readPacket(mFd, buf);
+        int received = readPacket(buf);
         if (received != len) {
             Log.i(TAG, "Reflecting ping did not result in ping response: " +
                     "read=" + received + " expected=" + len);
@@ -193,11 +190,21 @@ public class PacketReflector extends Thread {
         }
     }
 
+    private int readPacket(@NonNull byte[] buf) {
+        int len;
+        try {
+            len = Os.read(mFd, buf, 0, buf.length);
+        } catch (ErrnoException | IOException e) {
+            Log.e(TAG, "Error reading packet: " + e.getMessage());
+            len = -1;
+        }
+        return len;
+    }
+
     // Reads one packet from our mFd, and possibly writes the packet back.
     private void processPacket() {
-        int len = PacketReflectorUtil.readPacket(mFd, mBuf);
+        int len = readPacket(mBuf);
         if (len < 1) {
-            // Usually happens when socket read is being interrupted, e.g. stopping PacketReflector.
             return;
         }
 
@@ -210,11 +217,11 @@ public class PacketReflector extends Thread {
             hdrLen = IPV6_HEADER_LENGTH;
             protoPos = IPV6_PROTO_OFFSET;
         } else {
-            throw new IllegalStateException("Unexpected version: " + version);
+            return;
         }
 
         if (len < hdrLen) {
-            throw new IllegalStateException("Unexpected buffer length: " + len);
+            return;
         }
 
         byte proto = mBuf[protoPos];
@@ -234,10 +241,10 @@ public class PacketReflector extends Thread {
     }
 
     public void run() {
-        Log.i(TAG, "starting fd=" + mFd + " valid=" + mFd.valid());
+        Log.i(TAG, "PacketReflector starting fd=" + mFd + " valid=" + mFd.valid());
         while (!interrupted() && mFd.valid()) {
             processPacket();
         }
-        Log.i(TAG, "exiting fd=" + mFd + " valid=" + mFd.valid());
+        Log.i(TAG, "PacketReflector exiting fd=" + mFd + " valid=" + mFd.valid());
     }
 }
