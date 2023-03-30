@@ -17,6 +17,7 @@
 package com.android.net.module.util.netlink;
 
 import static com.android.net.module.util.netlink.StructNlMsgHdr.NLM_F_ACK;
+import static com.android.net.module.util.netlink.StructNlMsgHdr.NLM_F_REPLACE;
 import static com.android.net.module.util.netlink.StructNlMsgHdr.NLM_F_REQUEST;
 
 import android.system.OsConstants;
@@ -58,12 +59,20 @@ public class RtNetlinkAddressMessage extends NetlinkMessage {
     @Nullable
     private StructIfacacheInfo mIfacacheInfo;
 
-    private RtNetlinkAddressMessage(@NonNull StructNlMsgHdr header) {
+    @VisibleForTesting
+    public RtNetlinkAddressMessage(@NonNull final StructNlMsgHdr header,
+            @NonNull final StructIfaddrMsg ifaddrMsg,
+            @NonNull final InetAddress ipAddress,
+            @Nullable final StructIfacacheInfo structIfacacheInfo,
+            int flags) {
         super(header);
-        mIfaddrmsg = null;
-        mIpAddress = null;
-        mIfacacheInfo = null;
-        mFlags = 0;
+        mIfaddrmsg = ifaddrMsg;
+        mIpAddress = ipAddress;
+        mIfacacheInfo = structIfacacheInfo;
+        mFlags = flags;
+    }
+    private RtNetlinkAddressMessage(@NonNull StructNlMsgHdr header) {
+        this(header, null, null, null, 0);
     }
 
     public int getFlags() {
@@ -160,7 +169,7 @@ public class RtNetlinkAddressMessage extends NetlinkMessage {
 
         final StructNlMsgHdr nlmsghdr = new StructNlMsgHdr();
         nlmsghdr.nlmsg_type = NetlinkConstants.RTM_NEWADDR;
-        nlmsghdr.nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
+        nlmsghdr.nlmsg_flags = NLM_F_REQUEST | NLM_F_REPLACE | NLM_F_ACK;
         nlmsghdr.nlmsg_seq = seqNo;
 
         final RtNetlinkAddressMessage msg = new RtNetlinkAddressMessage(nlmsghdr);
