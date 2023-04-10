@@ -208,17 +208,23 @@ public final class NetworkStackConstants {
      */
     public static final int INFINITE_LEASE = 0xffffffff;
     public static final int DHCP4_CLIENT_PORT = 68;
+    // The maximum length of a DHCP packet that can be constructed.
+    public static final int DHCP_MAX_LENGTH = 1500;
+    public static final int DHCP_MAX_OPTION_LEN = 255;
 
     /**
      * DHCPv6 constants.
      *
      * See also:
      *     - https://datatracker.ietf.org/doc/html/rfc8415
+     *     - https://www.iana.org/assignments/dhcpv6-parameters/dhcpv6-parameters.xhtml
      */
     public static final int DHCP6_CLIENT_PORT = 546;
     public static final int DHCP6_SERVER_PORT = 547;
     public static final Inet6Address ALL_DHCP_RELAY_AGENTS_AND_SERVERS =
             (Inet6Address) InetAddresses.parseNumericAddress("ff02::1:2");
+    public static final int DHCP6_OPTION_IA_PD = 25;
+    public static final int DHCP6_OPTION_IAPREFIX = 26;
 
     /**
      * IEEE802.11 standard constants.

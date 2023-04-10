@@ -83,7 +83,7 @@ open class RecorderCallback private constructor(
         ) : CallbackEntry()
         data class BlockedStatusInt(
             override val network: Network,
-            val blocked: Int
+            val reason: Int
         ) : CallbackEntry()
         // Convenience constants for expecting a type
         companion object {
@@ -220,7 +220,8 @@ open class TestableNetworkCallback private constructor(
      * Long.MAX_VALUE.
      */
     @JvmOverloads
-    fun poll(timeoutMs: Long = defaultTimeoutMs): CallbackEntry? = history.poll(timeoutMs)
+    fun poll(timeoutMs: Long = defaultTimeoutMs, predicate: (CallbackEntry) -> Boolean = { true }) =
+            history.poll(timeoutMs, predicate)
 
     /**
      * Get the next callback or throw if timeout.
@@ -385,7 +386,7 @@ open class TestableNetworkCallback private constructor(
         timeoutMs: Long = defaultTimeoutMs,
         from: Int = mark,
         crossinline predicate: (T) -> Boolean = { true }
-    ): T = eventuallyExpectOrNull(timeoutMs, from, predicate).also {
+    ): T = history.poll(timeoutMs, from) { it is T && predicate(it) }.also {
         assertNotNull(it, "Callback ${T::class} not received within ${timeoutMs}ms")
     } as T
 
@@ -407,26 +408,12 @@ open class TestableNetworkCallback private constructor(
         assertNotNull(it, "Callback ${type.java} not received within ${timeoutMs}ms")
     } as T
 
-    // TODO (b/157405399) straighten and unify the method names
+    // TODO (b/157405399) remove this method when there are no longer any uses of it.
     inline fun <reified T : CallbackEntry> eventuallyExpectOrNull(
         timeoutMs: Long = defaultTimeoutMs,
         from: Int = mark,
         crossinline predicate: (T) -> Boolean = { true }
     ) = history.poll(timeoutMs, from) { it is T && predicate(it) } as T?
-
-    inline fun expectCapabilitiesThat(
-        net: Network,
-        tmt: Long = defaultTimeoutMs,
-        valid: (NetworkCapabilities) -> Boolean
-    ): CapabilitiesChanged =
-            expect(net, tmt, "Capabilities don't match expectations") { valid(it.caps) }
-
-    inline fun expectLinkPropertiesThat(
-        net: Network,
-        tmt: Long = defaultTimeoutMs,
-        valid: (LinkProperties) -> Boolean
-    ): LinkPropertiesChanged =
-            expect(net, tmt, "LinkProperties don't match expectations") { valid(it.lp) }
 
     // Expects onAvailable and the callbacks that follow it. These are:
     // - onSuspended, iff the network was suspended when the callbacks fire.
@@ -448,18 +435,18 @@ open class TestableNetworkCallback private constructor(
         tmt: Long = defaultTimeoutMs
     ) {
         expectAvailableCallbacksCommon(net, suspended, validated, tmt)
-        expectBlockedStatusCallback(blocked, net, tmt)
+        expect<BlockedStatus>(net, tmt) { it.blocked == blocked }
     }
 
     fun expectAvailableCallbacks(
         net: Network,
         suspended: Boolean,
         validated: Boolean,
-        blockedStatus: Int,
+        blockedReason: Int,
         tmt: Long
     ) {
         expectAvailableCallbacksCommon(net, suspended, validated, tmt)
-        expectBlockedStatusCallback(blockedStatus, net)
+        expect<BlockedStatusInt>(net) { it.reason == blockedReason }
     }
 
     private fun expectAvailableCallbacksCommon(
@@ -472,10 +459,8 @@ open class TestableNetworkCallback private constructor(
         if (suspended) {
             expect<Suspended>(net, tmt)
         }
-        expectCapabilitiesThat(net, tmt) {
-            validated == null || validated == it.hasCapability(
-                NET_CAPABILITY_VALIDATED
-            )
+        expect<CapabilitiesChanged>(net, tmt) {
+            validated == null || validated == it.caps.hasCapability(NET_CAPABILITY_VALIDATED)
         }
         expect<LinkPropertiesChanged>(net, tmt)
     }
@@ -487,16 +472,6 @@ open class TestableNetworkCallback private constructor(
         validated: Boolean,
         tmt: Long = defaultTimeoutMs
     ) = expectAvailableCallbacks(net, suspended = true, validated = validated, tmt = tmt)
-
-    fun expectBlockedStatusCallback(blocked: Boolean, net: Network, tmt: Long = defaultTimeoutMs) =
-            expect<BlockedStatus>(net, tmt, "Unexpected blocked status") {
-                it.blocked == blocked
-            }
-
-    fun expectBlockedStatusCallback(blocked: Int, net: Network, tmt: Long = defaultTimeoutMs) =
-            expect<BlockedStatusInt>(net, tmt, "Unexpected blocked status") {
-                it.blocked == blocked
-            }
 
     // Expects the available callbacks (where the onCapabilitiesChanged must contain the
     // VALIDATED capability), plus another onCapabilitiesChanged which is identical to the
@@ -514,17 +489,17 @@ open class TestableNetworkCallback private constructor(
     // when a network connects and satisfies a callback, and then immediately validates.
     fun expectAvailableThenValidatedCallbacks(net: Network, tmt: Long = defaultTimeoutMs) {
         expectAvailableCallbacks(net, validated = false, tmt = tmt)
-        expectCapabilitiesThat(net, tmt) { it.hasCapability(NET_CAPABILITY_VALIDATED) }
+        expectCaps(net, tmt) { it.hasCapability(NET_CAPABILITY_VALIDATED) }
     }
 
     fun expectAvailableThenValidatedCallbacks(
         net: Network,
-        blockedStatus: Int,
+        blockedReason: Int,
         tmt: Long = defaultTimeoutMs
     ) {
         expectAvailableCallbacks(net, validated = false, suspended = false,
-                blockedStatus = blockedStatus, tmt = tmt)
-        expectCapabilitiesThat(net, tmt) { it.hasCapability(NET_CAPABILITY_VALIDATED) }
+                blockedReason = blockedReason, tmt = tmt)
+        expectCaps(net, tmt) { it.hasCapability(NET_CAPABILITY_VALIDATED) }
     }
 
     // Temporary Java compat measure : have MockNetworkAgent implement this so that all existing
@@ -571,38 +546,26 @@ open class TestableNetworkCallback private constructor(
     }
 
     @JvmOverloads
-    fun expectLinkPropertiesThat(
+    fun expectCaps(
         n: HasNetwork,
         tmt: Long = defaultTimeoutMs,
-        valid: (LinkProperties) -> Boolean
-    ) = expectLinkPropertiesThat(n.network, tmt, valid)
+        valid: (NetworkCapabilities) -> Boolean = { true }
+    ) = expect<CapabilitiesChanged>(n.network, tmt) { valid(it.caps) }.caps
 
     @JvmOverloads
-    fun expectCapabilitiesThat(
-        n: HasNetwork,
+    fun expectCaps(
+        n: Network,
         tmt: Long = defaultTimeoutMs,
         valid: (NetworkCapabilities) -> Boolean
-    ) = expectCapabilitiesThat(n.network, tmt, valid)
+    ) = expect<CapabilitiesChanged>(n, tmt) { valid(it.caps) }.caps
 
-    @JvmOverloads
-    fun expectCapabilitiesWith(
-        capability: Int,
+    fun expectCaps(
         n: HasNetwork,
-        timeoutMs: Long = defaultTimeoutMs
-    ): NetworkCapabilities {
-        return expectCapabilitiesThat(n.network, timeoutMs) { it.hasCapability(capability) }.caps
-    }
+        valid: (NetworkCapabilities) -> Boolean
+    ) = expect<CapabilitiesChanged>(n.network) { valid(it.caps) }.caps
 
-    @JvmOverloads
-    fun expectCapabilitiesWithout(
-        capability: Int,
-        n: HasNetwork,
-        timeoutMs: Long = defaultTimeoutMs
-    ): NetworkCapabilities {
-        return expectCapabilitiesThat(n.network, timeoutMs) { !it.hasCapability(capability) }.caps
-    }
-
-    fun expectBlockedStatusCallback(expectBlocked: Boolean, n: HasNetwork) {
-        expectBlockedStatusCallback(expectBlocked, n.network, defaultTimeoutMs)
-    }
+    fun expectCaps(
+        tmt: Long,
+        valid: (NetworkCapabilities) -> Boolean
+    ) = expect<CapabilitiesChanged>(ANY_NETWORK, tmt) { valid(it.caps) }.caps
 }
