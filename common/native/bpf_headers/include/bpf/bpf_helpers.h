@@ -27,13 +27,6 @@
 // Android S / 12 (api level 31) - added 'tethering' mainline eBPF support
 #define BPFLOADER_S_VERSION 2u
 
-// Android T / 13 Beta 3 (api level 33) - added support for 'netd_shared'
-#define BPFLOADER_T_BETA3_VERSION 13u
-
-// v0.18 added support for shared and pindir, but still ignores selinux_content
-// v0.19 added support for selinux_content along with the required selinux changes
-// and should be available starting with Android T Beta 4
-//
 // Android T / 13 (api level 33) - support for shared/selinux_context/pindir
 #define BPFLOADER_T_VERSION 19u
 
@@ -42,6 +35,9 @@
 
 // Bpfloader v0.33+ supports {map,prog}.ignore_on_{eng,user,userdebug}
 #define BPFLOADER_IGNORED_ON_VERSION 33u
+
+// Android U / 14 (api level 34) - various new program types added
+#define BPFLOADER_U_VERSION 37u
 
 /* For mainline module use, you can #define BPFLOADER_{MIN/MAX}_VER
  * before #include "bpf_helpers.h" to change which bpfloaders will
@@ -225,7 +221,7 @@ static void (*bpf_ringbuf_submit_unsafe)(const void* data, __u64 flags) = (void*
 
 #ifdef THIS_BPF_PROGRAM_IS_FOR_TEST_PURPOSES_ONLY
 #define BPF_MAP_ASSERT_OK(type, entries, mode)
-#elif BPFLOADER_MIN_VER >= BPFLOADER_T_BETA3_VERSION
+#elif BPFLOADER_MIN_VER >= BPFLOADER_T_VERSION
 #define BPF_MAP_ASSERT_OK(type, entries, mode)
 #else
 #define BPF_MAP_ASSERT_OK(type, entries, mode) \
@@ -305,6 +301,8 @@ unsigned long long load_word(void* skb, unsigned long long off) asm("llvm.bpf.lo
 
 static int (*bpf_probe_read)(void* dst, int size, void* unsafe_ptr) = (void*) BPF_FUNC_probe_read;
 static int (*bpf_probe_read_str)(void* dst, int size, void* unsafe_ptr) = (void*) BPF_FUNC_probe_read_str;
+static int (*bpf_probe_read_user)(void* dst, int size, const void* unsafe_ptr) = (void*)BPF_FUNC_probe_read_user;
+static int (*bpf_probe_read_user_str)(void* dst, int size, const void* unsafe_ptr) = (void*) BPF_FUNC_probe_read_user_str;
 static unsigned long long (*bpf_ktime_get_ns)(void) = (void*) BPF_FUNC_ktime_get_ns;
 static unsigned long long (*bpf_ktime_get_boot_ns)(void) = (void*)BPF_FUNC_ktime_get_boot_ns;
 static int (*bpf_trace_printk)(const char* fmt, int fmt_size, ...) = (void*) BPF_FUNC_trace_printk;
