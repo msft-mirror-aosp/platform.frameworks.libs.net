@@ -27,13 +27,6 @@
 // Android S / 12 (api level 31) - added 'tethering' mainline eBPF support
 #define BPFLOADER_S_VERSION 2u
 
-// Android T / 13 Beta 3 (api level 33) - added support for 'netd_shared'
-#define BPFLOADER_T_BETA3_VERSION 13u
-
-// v0.18 added support for shared and pindir, but still ignores selinux_content
-// v0.19 added support for selinux_content along with the required selinux changes
-// and should be available starting with Android T Beta 4
-//
 // Android T / 13 (api level 33) - support for shared/selinux_context/pindir
 #define BPFLOADER_T_VERSION 19u
 
@@ -42,6 +35,9 @@
 
 // Bpfloader v0.33+ supports {map,prog}.ignore_on_{eng,user,userdebug}
 #define BPFLOADER_IGNORED_ON_VERSION 33u
+
+// Android U / 14 (api level 34) - various new program types added
+#define BPFLOADER_U_VERSION 37u
 
 /* For mainline module use, you can #define BPFLOADER_{MIN/MAX}_VER
  * before #include "bpf_helpers.h" to change which bpfloaders will
@@ -102,6 +98,30 @@
 #define KVER_NONE 0
 #define KVER(a, b, c) (((a) << 24) + ((b) << 16) + (c))
 #define KVER_INF 0xFFFFFFFFu
+
+/*
+ * BPFFS (ie. /sys/fs/bpf) labelling is as follows:
+ *   subdirectory   selinux context      mainline  usecase / usable by
+ *   /              fs_bpf               no [*]    core operating system (ie. platform)
+ *   /loader        fs_bpf_loader        no, U+    (as yet unused)
+ *   /net_private   fs_bpf_net_private   yes, T+   network_stack
+ *   /net_shared    fs_bpf_net_shared    yes, T+   network_stack & system_server
+ *   /netd_readonly fs_bpf_netd_readonly yes, T+   network_stack & system_server & r/o to netd
+ *   /netd_shared   fs_bpf_netd_shared   yes, T+   network_stack & system_server & netd [**]
+ *   /tethering     fs_bpf_tethering     yes, S+   network_stack
+ *   /vendor        fs_bpf_vendor        no, T+    vendor
+ *
+ * [*] initial support for bpf was added back in P,
+ *     but things worked differently back then with no bpfloader,
+ *     and instead netd doing stuff by hand,
+ *     bpfloader with pinning into /sys/fs/bpf was (I believe) added in Q
+ *     (and was definitely there in R).
+ *
+ * [**] additionally bpf programs are accessible to netutils_wrapper
+ *      for use by iptables xt_bpf extensions.
+ *
+ * See cs/p:aosp-master%20-file:prebuilts/%20file:genfs_contexts%20"genfscon%20bpf"
+ */
 
 /* generic functions */
 
@@ -225,7 +245,7 @@ static void (*bpf_ringbuf_submit_unsafe)(const void* data, __u64 flags) = (void*
 
 #ifdef THIS_BPF_PROGRAM_IS_FOR_TEST_PURPOSES_ONLY
 #define BPF_MAP_ASSERT_OK(type, entries, mode)
-#elif BPFLOADER_MIN_VER >= BPFLOADER_T_BETA3_VERSION
+#elif BPFLOADER_MIN_VER >= BPFLOADER_T_VERSION
 #define BPF_MAP_ASSERT_OK(type, entries, mode)
 #else
 #define BPF_MAP_ASSERT_OK(type, entries, mode) \
