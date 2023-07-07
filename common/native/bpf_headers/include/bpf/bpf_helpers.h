@@ -84,6 +84,16 @@
     size_t _size_of_bpf_prog_def SECTION("size_of_bpf_prog_def") = sizeof(struct bpf_prog_def); \
     char _license[] SECTION("license") = (NAME)
 
+/* This macro disables loading BTF map debug information on Android <=U *and* all user builds.
+ *
+ * Note: Bpfloader v0.39+ honours 'btf_user_min_bpfloader_ver' on user builds,
+ * and 'btf_min_bpfloader_ver' on non-user builds.
+ * Older BTF capable versions unconditionally honour 'btf_min_bpfloader_ver'
+ */
+#define DISABLE_BTF_ON_USER_BUILDS() \
+    unsigned _btf_min_bpfloader_ver SECTION("btf_min_bpfloader_ver") = 39u; \
+    unsigned _btf_user_min_bpfloader_ver SECTION("btf_user_min_bpfloader_ver") = 0xFFFFFFFFu
+
 /* flag the resulting bpf .o file as critical to system functionality,
  * loading all kernel version appropriate programs in it must succeed
  * for bpfloader success
@@ -98,6 +108,30 @@
 #define KVER_NONE 0
 #define KVER(a, b, c) (((a) << 24) + ((b) << 16) + (c))
 #define KVER_INF 0xFFFFFFFFu
+
+/*
+ * BPFFS (ie. /sys/fs/bpf) labelling is as follows:
+ *   subdirectory   selinux context      mainline  usecase / usable by
+ *   /              fs_bpf               no [*]    core operating system (ie. platform)
+ *   /loader        fs_bpf_loader        no, U+    (as yet unused)
+ *   /net_private   fs_bpf_net_private   yes, T+   network_stack
+ *   /net_shared    fs_bpf_net_shared    yes, T+   network_stack & system_server
+ *   /netd_readonly fs_bpf_netd_readonly yes, T+   network_stack & system_server & r/o to netd
+ *   /netd_shared   fs_bpf_netd_shared   yes, T+   network_stack & system_server & netd [**]
+ *   /tethering     fs_bpf_tethering     yes, S+   network_stack
+ *   /vendor        fs_bpf_vendor        no, T+    vendor
+ *
+ * [*] initial support for bpf was added back in P,
+ *     but things worked differently back then with no bpfloader,
+ *     and instead netd doing stuff by hand,
+ *     bpfloader with pinning into /sys/fs/bpf was (I believe) added in Q
+ *     (and was definitely there in R).
+ *
+ * [**] additionally bpf programs are accessible to netutils_wrapper
+ *      for use by iptables xt_bpf extensions.
+ *
+ * See cs/p:aosp-master%20-file:prebuilts/%20file:genfs_contexts%20"genfscon%20bpf"
+ */
 
 /* generic functions */
 
@@ -199,14 +233,22 @@ static void (*bpf_ringbuf_submit_unsafe)(const void* data, __u64 flags) = (void*
                         selinux, pindir, share, KVER(5, 8, 0), KVER_INF,       \
                         min_loader, max_loader, ignore_eng, ignore_user,       \
                         ignore_userdebug);                                     \
+                                                                               \
+    _Static_assert((size_bytes) >= 4096, "min 4 kiB ringbuffer size");         \
+    _Static_assert((size_bytes) <= 0x10000000, "max 256 MiB ringbuffer size"); \
+    _Static_assert(((size_bytes) & ((size_bytes) - 1)) == 0,                   \
+                   "ring buffer size must be a power of two");                 \
+                                                                               \
     static inline __always_inline __unused int bpf_##the_map##_output(         \
             const ValueType* v) {                                              \
         return bpf_ringbuf_output_unsafe(&the_map, v, sizeof(*v), 0);          \
     }                                                                          \
+                                                                               \
     static inline __always_inline __unused                                     \
             ValueType* bpf_##the_map##_reserve() {                             \
         return bpf_ringbuf_reserve_unsafe(&the_map, sizeof(ValueType), 0);     \
     }                                                                          \
+                                                                               \
     static inline __always_inline __unused void bpf_##the_map##_submit(        \
             const ValueType* v) {                                              \
         bpf_ringbuf_submit_unsafe(v, 0);                                       \
@@ -238,6 +280,8 @@ static void (*bpf_ringbuf_submit_unsafe)(const void* data, __u64 flags) = (void*
                       KVER_NONE, KVER_INF, min_loader, max_loader,                               \
                       ignore_eng, ignore_user, ignore_userdebug);                                \
     BPF_MAP_ASSERT_OK(BPF_MAP_TYPE_##TYPE, (num_entries), (md));                                 \
+    _Static_assert(sizeof(KeyType) < 1024, "aosp/2370288 requires < 1024 byte keys");            \
+    _Static_assert(sizeof(ValueType) < 65536, "aosp/2370288 requires < 65536 byte values");      \
     BPF_ANNOTATE_KV_PAIR(the_map, KeyType, ValueType);                                           \
                                                                                                  \
     static inline __always_inline __unused ValueType* bpf_##the_map##_lookup_elem(               \
