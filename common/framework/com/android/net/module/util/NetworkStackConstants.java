@@ -135,7 +135,7 @@ public final class NetworkStackConstants {
      *     - https://tools.ietf.org/html/rfc792
      */
     public static final int ICMP_CHECKSUM_OFFSET = 2;
-
+    public static final int ICMP_HEADER_LEN = 8;
     /**
      * ICMPv6 constants.
      *
@@ -197,6 +197,8 @@ public final class NetworkStackConstants {
      *     - https://tools.ietf.org/html/rfc768
      */
     public static final int UDP_HEADER_LEN = 8;
+    public static final int UDP_SRCPORT_OFFSET = 0;
+    public static final int UDP_DSTPORT_OFFSET = 2;
     public static final int UDP_LENGTH_OFFSET = 4;
     public static final int UDP_CHECKSUM_OFFSET = 6;
 
@@ -225,6 +227,14 @@ public final class NetworkStackConstants {
             (Inet6Address) InetAddresses.parseNumericAddress("ff02::1:2");
     public static final int DHCP6_OPTION_IA_PD = 25;
     public static final int DHCP6_OPTION_IAPREFIX = 26;
+
+    /**
+     * DNS constants.
+     *
+     * See also:
+     *     - https://datatracker.ietf.org/doc/html/rfc7858#section-3.1
+     */
+    public static final short DNS_OVER_TLS_PORT = 853;
 
     /**
      * IEEE802.11 standard constants.
