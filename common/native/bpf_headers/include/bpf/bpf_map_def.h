@@ -48,9 +48,8 @@
 #define DEFAULT_SIZEOF_BPF_MAP_DEF 32       // v0.0 struct: enum (uint sized) + 7 uint
 #define DEFAULT_SIZEOF_BPF_PROG_DEF 20      // v0.0 struct: 4 uint + bool + 3 byte alignment pad
 
-// By default, unless otherwise specified, allow the use of features only supported by v0.28,
-// which first added working support for map uid != root
-#define COMPILE_FOR_BPFLOADER_VERSION 28u
+// By default, unless otherwise specified, allow the use of features only supported by v0.37.
+#define COMPILE_FOR_BPFLOADER_VERSION 37u
 
 /*
  * The bpf_{map,prog}_def structures are compiled for different architectures.
@@ -180,6 +179,14 @@ struct bpf_map_def {
     bool ignore_on_eng:1;
     bool ignore_on_user:1;
     bool ignore_on_userdebug:1;
+    // The following 5 ignore_on_* fields were added in version 0.38 (U). These are ignored in
+    // older bpfloader versions, and zero in programs compiled before 0.38.
+    // These are tests on the kernel architecture, ie. they ignore userspace bit-ness.
+    bool ignore_on_arm32:1;
+    bool ignore_on_aarch64:1;
+    bool ignore_on_x86_32:1;
+    bool ignore_on_x86_64:1;
+    bool ignore_on_riscv64:1;
 
     char pad0[2];  // manually pad up to 4 byte alignment, may be used for extensions in the future
 
@@ -209,6 +216,14 @@ struct bpf_prog_def {
     bool ignore_on_eng:1;
     bool ignore_on_user:1;
     bool ignore_on_userdebug:1;
+    // The following 5 ignore_on_* fields were added in version 0.38 (U). These are ignored in
+    // older bpfloader versions, and zero in programs compiled before 0.38.
+    // These are tests on the kernel architecture, ie. they ignore userspace bit-ness.
+    bool ignore_on_arm32:1;
+    bool ignore_on_aarch64:1;
+    bool ignore_on_x86_32:1;
+    bool ignore_on_x86_64:1;
+    bool ignore_on_riscv64:1;
 
     char pad0[2];  // manually pad up to 4 byte alignment, may be used for extensions in the future
 
