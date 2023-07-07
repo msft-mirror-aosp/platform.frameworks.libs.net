@@ -18,6 +18,8 @@ package com.android.net.module.util.structs;
 
 import static com.android.net.module.util.NetworkStackConstants.DHCP6_OPTION_IAPREFIX;
 
+import androidx.annotation.VisibleForTesting;
+
 import com.android.net.module.util.Struct;
 import com.android.net.module.util.Struct.Field;
 import com.android.net.module.util.Struct.Type;
@@ -55,20 +57,21 @@ public class IaPrefixOption extends Struct {
     public static final int LENGTH = 25; // option length excluding IAprefix-options
 
     @Field(order = 0, type = Type.S16)
-    public short code;
+    public final short code;
     @Field(order = 1, type = Type.S16)
-    public short length;
+    public final short length;
     @Field(order = 2, type = Type.U32)
-    public long preferred;
+    public final long preferred;
     @Field(order = 3, type = Type.U32)
-    public long valid;
-    @Field(order = 4, type = Type.U8)
-    public short prefixLen;
+    public final long valid;
+    @Field(order = 4, type = Type.S8)
+    public final byte prefixLen;
     @Field(order = 5, type = Type.ByteArray, arraysize = 16)
-    public byte[] prefix;
+    public final byte[] prefix;
 
-    IaPrefixOption(final short code, final short length, final long preferred,
-            final long valid, final short prefixLen, final byte[] prefix) {
+    @VisibleForTesting
+    public IaPrefixOption(final short code, final short length, final long preferred,
+            final long valid, final byte prefixLen, final byte[] prefix) {
         this.code = code;
         this.length = length;
         this.preferred = preferred;
@@ -81,7 +84,7 @@ public class IaPrefixOption extends Struct {
      * Build an IA_PD prefix option with given specific parameters.
      */
     public static ByteBuffer build(final short length, final long preferred, final long valid,
-            final short prefixLen, final byte[] prefix) {
+            final byte prefixLen, final byte[] prefix) {
         final IaPrefixOption option = new IaPrefixOption((byte) DHCP6_OPTION_IAPREFIX,
                 length /* 25 + IAPrefix options length */, preferred, valid, prefixLen, prefix);
         return ByteBuffer.wrap(option.writeToBytes(ByteOrder.BIG_ENDIAN));
