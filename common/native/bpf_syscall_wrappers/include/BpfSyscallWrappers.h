@@ -28,17 +28,19 @@
   #define BPF_FD_TO_U32(x) static_cast<__u32>((x).get())
 #endif
 
-#define ptr_to_u64(x) ((uint64_t)(uintptr_t)(x))
-
 namespace android {
 namespace bpf {
+
+inline uint64_t ptr_to_u64(const void * const x) {
+    return (uint64_t)(uintptr_t)x;
+}
 
 /* Note: bpf_attr is a union which might have a much larger size then the anonymous struct portion
  * of it that we are using.  The kernel's bpf() system call will perform a strict check to ensure
  * all unused portions are zero.  It will fail with E2BIG if we don't fully zero bpf_attr.
  */
 
-inline int bpf(int cmd, const bpf_attr& attr) {
+inline int bpf(enum bpf_cmd cmd, const bpf_attr& attr) {
     return syscall(__NR_bpf, cmd, &attr, sizeof(attr));
 }
 
@@ -50,6 +52,23 @@ inline int createMap(bpf_map_type map_type, uint32_t key_size, uint32_t value_si
                                        .value_size = value_size,
                                        .max_entries = max_entries,
                                        .map_flags = map_flags,
+                               });
+}
+
+// Note:
+//   'map_type' must be one of BPF_MAP_TYPE_{ARRAY,HASH}_OF_MAPS
+//   'value_size' must be sizeof(u32), ie. 4
+//   'inner_map_fd' is basically a template specifying {map_type, key_size, value_size, max_entries, map_flags}
+//   of the inner map type (and possibly only key_size/value_size actually matter?).
+inline int createOuterMap(bpf_map_type map_type, uint32_t key_size, uint32_t value_size,
+                          uint32_t max_entries, uint32_t map_flags, const BPF_FD_TYPE inner_map_fd) {
+    return bpf(BPF_MAP_CREATE, {
+                                       .map_type = map_type,
+                                       .key_size = key_size,
+                                       .value_size = value_size,
+                                       .max_entries = max_entries,
+                                       .map_flags = map_flags,
+                                       .inner_map_fd = BPF_FD_TO_U32(inner_map_fd),
                                });
 }
 
@@ -150,44 +169,56 @@ inline int detachSingleProgram(bpf_attach_type type, const BPF_FD_TYPE prog_fd,
                                 });
 }
 
+// Available in 4.12 and later kernels.
+inline int runProgram(const BPF_FD_TYPE prog_fd, const void* data,
+                      const uint32_t data_size) {
+    return bpf(BPF_PROG_RUN, {
+                                     .test = {
+                                             .prog_fd = BPF_FD_TO_U32(prog_fd),
+                                             .data_in = ptr_to_u64(data),
+                                             .data_size_in = data_size,
+                                     },
+                             });
+}
+
 // BPF_OBJ_GET_INFO_BY_FD requires 4.14+ kernel
 //
 // Note: some fields are only defined in newer kernels (ie. the map_info struct grows
 // over time), so we need to check that the field we're interested in is actually
 // supported/returned by the running kernel.  We do this by checking it is fully
 // within the bounds of the struct size as reported by the kernel.
-#define DEFINE_BPF_GET_FD_INFO(NAME, FIELD) \
-inline int bpfGetFd ## NAME(const BPF_FD_TYPE map_fd) { \
-    struct bpf_map_info map_info = {}; \
+#define DEFINE_BPF_GET_FD(TYPE, NAME, FIELD) \
+inline int bpfGetFd ## NAME(const BPF_FD_TYPE fd) { \
+    struct bpf_ ## TYPE ## _info info = {}; \
     union bpf_attr attr = { .info = { \
-        .bpf_fd = BPF_FD_TO_U32(map_fd), \
-        .info_len = sizeof(map_info), \
-        .info = ptr_to_u64(&map_info), \
+        .bpf_fd = BPF_FD_TO_U32(fd), \
+        .info_len = sizeof(info), \
+        .info = ptr_to_u64(&info), \
     }}; \
     int rv = bpf(BPF_OBJ_GET_INFO_BY_FD, attr); \
     if (rv) return rv; \
-    if (attr.info.info_len < offsetof(bpf_map_info, FIELD) + sizeof(map_info.FIELD)) { \
+    if (attr.info.info_len < offsetof(bpf_ ## TYPE ## _info, FIELD) + sizeof(info.FIELD)) { \
         errno = EOPNOTSUPP; \
         return -1; \
     }; \
-    return map_info.FIELD; \
+    return info.FIELD; \
 }
 
-// All 6 of these fields are already present in Linux v4.14 (even ACK 4.14-P)
+// All 7 of these fields are already present in Linux v4.14 (even ACK 4.14-P)
 // while BPF_OBJ_GET_INFO_BY_FD is not implemented at all in v4.9 (even ACK 4.9-Q)
-DEFINE_BPF_GET_FD_INFO(MapType, type)            // int bpfGetFdMapType(const BPF_FD_TYPE map_fd)
-DEFINE_BPF_GET_FD_INFO(MapId, id)                // int bpfGetFdMapId(const BPF_FD_TYPE map_fd)
-DEFINE_BPF_GET_FD_INFO(KeySize, key_size)        // int bpfGetFdKeySize(const BPF_FD_TYPE map_fd)
-DEFINE_BPF_GET_FD_INFO(ValueSize, value_size)    // int bpfGetFdValueSize(const BPF_FD_TYPE map_fd)
-DEFINE_BPF_GET_FD_INFO(MaxEntries, max_entries)  // int bpfGetFdMaxEntries(const BPF_FD_TYPE map_fd)
-DEFINE_BPF_GET_FD_INFO(MapFlags, map_flags)      // int bpfGetFdMapFlags(const BPF_FD_TYPE map_fd)
+DEFINE_BPF_GET_FD(map, MapType, type)            // int bpfGetFdMapType(const BPF_FD_TYPE map_fd)
+DEFINE_BPF_GET_FD(map, MapId, id)                // int bpfGetFdMapId(const BPF_FD_TYPE map_fd)
+DEFINE_BPF_GET_FD(map, KeySize, key_size)        // int bpfGetFdKeySize(const BPF_FD_TYPE map_fd)
+DEFINE_BPF_GET_FD(map, ValueSize, value_size)    // int bpfGetFdValueSize(const BPF_FD_TYPE map_fd)
+DEFINE_BPF_GET_FD(map, MaxEntries, max_entries)  // int bpfGetFdMaxEntries(const BPF_FD_TYPE map_fd)
+DEFINE_BPF_GET_FD(map, MapFlags, map_flags)      // int bpfGetFdMapFlags(const BPF_FD_TYPE map_fd)
+DEFINE_BPF_GET_FD(prog, ProgId, id)              // int bpfGetFdProgId(const BPF_FD_TYPE prog_fd)
 
-#undef DEFINE_BPF_GET_FD_INFO
+#undef DEFINE_BPF_GET_FD
 
 }  // namespace bpf
 }  // namespace android
 
-#undef ptr_to_u64
 #undef BPF_FD_TO_U32
 #undef BPF_FD_TYPE
 #undef BPF_FD_JUST_USE_INT
