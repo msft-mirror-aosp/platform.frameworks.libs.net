@@ -36,7 +36,9 @@ java_library {
         "libnanohttpd",
         "net-tests-utils-host-device-common",
         "net-utils-device-common",
+        "net-utils-device-common-async",
         "net-utils-device-common-netlink",
+        "net-utils-device-common-wear",
         "modules-utils-build_system",
     ],
     lint: { strict_updatability_linting: true },
@@ -81,5 +83,5 @@ java_test_host {
     ],
     libs: ["tradefed"],
     test_suites: ["ats", "device-tests", "general-tests", "cts", "mts-networking"],
-    data: [":ConnectivityChecker"],
+    data: [":ConnectivityTestPreparer"],
 }

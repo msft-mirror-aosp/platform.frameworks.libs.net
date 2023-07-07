@@ -67,9 +67,14 @@ public class BpfMap<K extends Struct, V extends Struct> implements IBpfMap<K, V>
     private static ConcurrentHashMap<Pair<String, Integer>, ParcelFileDescriptor> sFdCache =
             new ConcurrentHashMap<>();
 
-    private static ParcelFileDescriptor cachedBpfFdGet(String path, int mode)
+    private static ParcelFileDescriptor cachedBpfFdGet(String path, int mode,
+                                                       int keySize, int valueSize)
             throws ErrnoException, NullPointerException {
-        Pair<String, Integer> key = Pair.create(path, mode);
+        // Supports up to 1023 byte key and 65535 byte values
+        // Creating a BpfMap with larger keys/values seems like a bad idea any way...
+        keySize &= 1023; // 10-bits
+        valueSize &= 65535; // 16-bits
+        var key = Pair.create(path, (mode << 26) ^ (keySize << 16) ^ valueSize);
         // unlocked fetch is safe: map is concurrent read capable, and only inserted into
         ParcelFileDescriptor fd = sFdCache.get(key);
         if (fd != null) return fd;
@@ -79,7 +84,7 @@ public class BpfMap<K extends Struct, V extends Struct> implements IBpfMap<K, V>
             fd = sFdCache.get(key);
             if (fd != null) return fd;
             // okay, we really haven't opened this before...
-            fd = ParcelFileDescriptor.adoptFd(nativeBpfFdGet(path, mode));
+            fd = ParcelFileDescriptor.adoptFd(nativeBpfFdGet(path, mode, keySize, valueSize));
             sFdCache.put(key, fd);
             return fd;
         }
@@ -94,11 +99,11 @@ public class BpfMap<K extends Struct, V extends Struct> implements IBpfMap<K, V>
      */
     public BpfMap(@NonNull final String path, final int flag, final Class<K> key,
             final Class<V> value) throws ErrnoException, NullPointerException {
-        mMapFd = cachedBpfFdGet(path, flag);
         mKeyClass = key;
         mValueClass = value;
         mKeySize = Struct.getSize(key);
         mValueSize = Struct.getSize(value);
+        mMapFd = cachedBpfFdGet(path, flag, mKeySize, mValueSize);
     }
 
     /**
@@ -295,7 +300,7 @@ public class BpfMap<K extends Struct, V extends Struct> implements IBpfMap<K, V>
         }
     }
 
-    private static native int nativeBpfFdGet(String path, int mode)
+    private static native int nativeBpfFdGet(String path, int mode, int keySize, int valueSize)
             throws ErrnoException, NullPointerException;
 
     // Note: the following methods appear to not require the object by virtue of taking the
