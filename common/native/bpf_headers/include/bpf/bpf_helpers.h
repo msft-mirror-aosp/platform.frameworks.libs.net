@@ -27,18 +27,17 @@
 // Android S / 12 (api level 31) - added 'tethering' mainline eBPF support
 #define BPFLOADER_S_VERSION 2u
 
-// Android T / 13 Beta 3 (api level 33) - added support for 'netd_shared'
-#define BPFLOADER_T_BETA3_VERSION 13u
-
-// v0.18 added support for shared and pindir, but still ignores selinux_content
-// v0.19 added support for selinux_content along with the required selinux changes
-// and should be available starting with Android T Beta 4
-//
 // Android T / 13 (api level 33) - support for shared/selinux_context/pindir
 #define BPFLOADER_T_VERSION 19u
 
 // BpfLoader v0.25+ support obj@ver.o files
 #define BPFLOADER_OBJ_AT_VER_VERSION 25u
+
+// Bpfloader v0.33+ supports {map,prog}.ignore_on_{eng,user,userdebug}
+#define BPFLOADER_IGNORED_ON_VERSION 33u
+
+// Android U / 14 (api level 34) - various new program types added
+#define BPFLOADER_U_VERSION 37u
 
 /* For mainline module use, you can #define BPFLOADER_{MIN/MAX}_VER
  * before #include "bpf_helpers.h" to change which bpfloaders will
@@ -85,6 +84,16 @@
     size_t _size_of_bpf_prog_def SECTION("size_of_bpf_prog_def") = sizeof(struct bpf_prog_def); \
     char _license[] SECTION("license") = (NAME)
 
+/* This macro disables loading BTF map debug information on Android <=U *and* all user builds.
+ *
+ * Note: Bpfloader v0.39+ honours 'btf_user_min_bpfloader_ver' on user builds,
+ * and 'btf_min_bpfloader_ver' on non-user builds.
+ * Older BTF capable versions unconditionally honour 'btf_min_bpfloader_ver'
+ */
+#define DISABLE_BTF_ON_USER_BUILDS() \
+    unsigned _btf_min_bpfloader_ver SECTION("btf_min_bpfloader_ver") = 39u; \
+    unsigned _btf_user_min_bpfloader_ver SECTION("btf_user_min_bpfloader_ver") = 0xFFFFFFFFu
+
 /* flag the resulting bpf .o file as critical to system functionality,
  * loading all kernel version appropriate programs in it must succeed
  * for bpfloader success
@@ -99,6 +108,30 @@
 #define KVER_NONE 0
 #define KVER(a, b, c) (((a) << 24) + ((b) << 16) + (c))
 #define KVER_INF 0xFFFFFFFFu
+
+/*
+ * BPFFS (ie. /sys/fs/bpf) labelling is as follows:
+ *   subdirectory   selinux context      mainline  usecase / usable by
+ *   /              fs_bpf               no [*]    core operating system (ie. platform)
+ *   /loader        fs_bpf_loader        no, U+    (as yet unused)
+ *   /net_private   fs_bpf_net_private   yes, T+   network_stack
+ *   /net_shared    fs_bpf_net_shared    yes, T+   network_stack & system_server
+ *   /netd_readonly fs_bpf_netd_readonly yes, T+   network_stack & system_server & r/o to netd
+ *   /netd_shared   fs_bpf_netd_shared   yes, T+   network_stack & system_server & netd [**]
+ *   /tethering     fs_bpf_tethering     yes, S+   network_stack
+ *   /vendor        fs_bpf_vendor        no, T+    vendor
+ *
+ * [*] initial support for bpf was added back in P,
+ *     but things worked differently back then with no bpfloader,
+ *     and instead netd doing stuff by hand,
+ *     bpfloader with pinning into /sys/fs/bpf was (I believe) added in Q
+ *     (and was definitely there in R).
+ *
+ * [**] additionally bpf programs are accessible to netutils_wrapper
+ *      for use by iptables xt_bpf extensions.
+ *
+ * See cs/p:aosp-master%20-file:prebuilts/%20file:genfs_contexts%20"genfscon%20bpf"
+ */
 
 /* generic functions */
 
@@ -137,6 +170,14 @@ static int (*bpf_map_update_elem_unsafe)(const struct bpf_map_def* map, const vo
         BPF_FUNC_map_update_elem;
 static int (*bpf_map_delete_elem_unsafe)(const struct bpf_map_def* map,
                                          const void* key) = (void*)BPF_FUNC_map_delete_elem;
+static int (*bpf_ringbuf_output_unsafe)(const struct bpf_map_def* ringbuf,
+                                        const void* data, __u64 size, __u64 flags) = (void*)
+        BPF_FUNC_ringbuf_output;
+static void* (*bpf_ringbuf_reserve_unsafe)(const struct bpf_map_def* ringbuf,
+                                           __u64 size, __u64 flags) = (void*)
+        BPF_FUNC_ringbuf_reserve;
+static void (*bpf_ringbuf_submit_unsafe)(const void* data, __u64 flags) = (void*)
+        BPF_FUNC_ringbuf_submit;
 
 #define BPF_ANNOTATE_KV_PAIR(name, type_key, type_val)  \
         struct ____btf_map_##name {                     \
@@ -147,26 +188,100 @@ static int (*bpf_map_delete_elem_unsafe)(const struct bpf_map_def* map,
         __attribute__ ((section(".maps." #name), used)) \
                 ____btf_map_##name = { }
 
+#define BPF_ASSERT_LOADER_VERSION(min_loader, ignore_eng, ignore_user, ignore_userdebug)  \
+    _Static_assert(                                                                       \
+        (min_loader) >= BPFLOADER_IGNORED_ON_VERSION ||                                   \
+            !((ignore_eng) || (ignore_user) || (ignore_userdebug)),                       \
+        "bpfloader min version must be >= 0.33 in order to use ignored_on");
+
+#define DEFINE_BPF_MAP_BASE(the_map, TYPE, keysize, valuesize, num_entries, \
+                            usr, grp, md, selinux, pindir, share, minkver,  \
+                            maxkver, minloader, maxloader, ignore_eng,      \
+                            ignore_user, ignore_userdebug)                  \
+    const struct bpf_map_def SECTION("maps") the_map = {                    \
+        .type = BPF_MAP_TYPE_##TYPE,                                        \
+        .key_size = (keysize),                                              \
+        .value_size = (valuesize),                                          \
+        .max_entries = (num_entries),                                       \
+        .map_flags = 0,                                                     \
+        .uid = (usr),                                                       \
+        .gid = (grp),                                                       \
+        .mode = (md),                                                       \
+        .bpfloader_min_ver = (minloader),                                   \
+        .bpfloader_max_ver = (maxloader),                                   \
+        .min_kver = (minkver),                                              \
+        .max_kver = (maxkver),                                              \
+        .selinux_context = (selinux),                                       \
+        .pin_subdir = (pindir),                                             \
+        .shared = (share),                                                  \
+        .ignore_on_eng = (ignore_eng),                                      \
+        .ignore_on_user = (ignore_user),                                    \
+        .ignore_on_userdebug = (ignore_userdebug),                          \
+    };                                                                      \
+    BPF_ASSERT_LOADER_VERSION(minloader, ignore_eng, ignore_user, ignore_userdebug);
+
+// Type safe macro to declare a ring buffer and related output functions.
+// Compatibility:
+// * BPF ring buffers are only available kernels 5.8 and above. Any program
+//   accessing the ring buffer should set a program level min_kver >= 5.8.
+// * The definition below sets a map min_kver of 5.8 which requires targeting
+//   a BPFLOADER_MIN_VER >= BPFLOADER_S_VERSION.
+#define DEFINE_BPF_RINGBUF_EXT(the_map, ValueType, size_bytes, usr, grp, md,   \
+                               selinux, pindir, share, min_loader, max_loader, \
+                               ignore_eng, ignore_user, ignore_userdebug)      \
+    DEFINE_BPF_MAP_BASE(the_map, RINGBUF, 0, 0, size_bytes, usr, grp, md,      \
+                        selinux, pindir, share, KVER(5, 8, 0), KVER_INF,       \
+                        min_loader, max_loader, ignore_eng, ignore_user,       \
+                        ignore_userdebug);                                     \
+                                                                               \
+    _Static_assert((size_bytes) >= 4096, "min 4 kiB ringbuffer size");         \
+    _Static_assert((size_bytes) <= 0x10000000, "max 256 MiB ringbuffer size"); \
+    _Static_assert(((size_bytes) & ((size_bytes) - 1)) == 0,                   \
+                   "ring buffer size must be a power of two");                 \
+                                                                               \
+    static inline __always_inline __unused int bpf_##the_map##_output(         \
+            const ValueType* v) {                                              \
+        return bpf_ringbuf_output_unsafe(&the_map, v, sizeof(*v), 0);          \
+    }                                                                          \
+                                                                               \
+    static inline __always_inline __unused                                     \
+            ValueType* bpf_##the_map##_reserve() {                             \
+        return bpf_ringbuf_reserve_unsafe(&the_map, sizeof(ValueType), 0);     \
+    }                                                                          \
+                                                                               \
+    static inline __always_inline __unused void bpf_##the_map##_submit(        \
+            const ValueType* v) {                                              \
+        bpf_ringbuf_submit_unsafe(v, 0);                                       \
+    }
+
+/* There exist buggy kernels with pre-T OS, that due to
+ * kernel patch "[ALPS05162612] bpf: fix ubsan error"
+ * do not support userspace writes into non-zero index of bpf map arrays.
+ *
+ * We use this assert to prevent us from being able to define such a map.
+ */
+
+#ifdef THIS_BPF_PROGRAM_IS_FOR_TEST_PURPOSES_ONLY
+#define BPF_MAP_ASSERT_OK(type, entries, mode)
+#elif BPFLOADER_MIN_VER >= BPFLOADER_T_VERSION
+#define BPF_MAP_ASSERT_OK(type, entries, mode)
+#else
+#define BPF_MAP_ASSERT_OK(type, entries, mode) \
+  _Static_assert(((type) != BPF_MAP_TYPE_ARRAY) || ((entries) <= 1) || !((mode) & 0222), \
+  "Writable arrays with more than 1 element not supported on pre-T devices.")
+#endif
+
 /* type safe macro to declare a map and related accessor functions */
 #define DEFINE_BPF_MAP_EXT(the_map, TYPE, KeyType, ValueType, num_entries, usr, grp, md,         \
-                           selinux, pindir, share)                                               \
-    const struct bpf_map_def SECTION("maps") the_map = {                                         \
-            .type = BPF_MAP_TYPE_##TYPE,                                                         \
-            .key_size = sizeof(KeyType),                                                         \
-            .value_size = sizeof(ValueType),                                                     \
-            .max_entries = (num_entries),                                                        \
-            .map_flags = 0,                                                                      \
-            .uid = (usr),                                                                        \
-            .gid = (grp),                                                                        \
-            .mode = (md),                                                                        \
-            .bpfloader_min_ver = DEFAULT_BPFLOADER_MIN_VER,                                      \
-            .bpfloader_max_ver = DEFAULT_BPFLOADER_MAX_VER,                                      \
-            .min_kver = KVER_NONE,                                                               \
-            .max_kver = KVER_INF,                                                                \
-            .selinux_context = selinux,                                                          \
-            .pin_subdir = pindir,                                                                \
-            .shared = share,                                                                     \
-    };                                                                                           \
+                           selinux, pindir, share, min_loader, max_loader, ignore_eng,           \
+                           ignore_user, ignore_userdebug)                                        \
+  DEFINE_BPF_MAP_BASE(the_map, TYPE, sizeof(KeyType), sizeof(ValueType),                         \
+                      num_entries, usr, grp, md, selinux, pindir, share,                         \
+                      KVER_NONE, KVER_INF, min_loader, max_loader,                               \
+                      ignore_eng, ignore_user, ignore_userdebug);                                \
+    BPF_MAP_ASSERT_OK(BPF_MAP_TYPE_##TYPE, (num_entries), (md));                                 \
+    _Static_assert(sizeof(KeyType) < 1024, "aosp/2370288 requires < 1024 byte keys");            \
+    _Static_assert(sizeof(ValueType) < 65536, "aosp/2370288 requires < 65536 byte values");      \
     BPF_ANNOTATE_KV_PAIR(the_map, KeyType, ValueType);                                           \
                                                                                                  \
     static inline __always_inline __unused ValueType* bpf_##the_map##_lookup_elem(               \
@@ -197,13 +312,19 @@ static int (*bpf_map_delete_elem_unsafe)(const struct bpf_map_def* map,
 #error "Bpf Map UID must be left at default of AID_ROOT for BpfLoader prior to v0.28"
 #endif
 
-#define DEFINE_BPF_MAP_UGM(the_map, TYPE, KeyType, ValueType, num_entries, usr, grp, md) \
-    DEFINE_BPF_MAP_EXT(the_map, TYPE, KeyType, ValueType, num_entries, usr, grp, md, \
-                       DEFAULT_BPF_MAP_SELINUX_CONTEXT, DEFAULT_BPF_MAP_PIN_SUBDIR, false)
+#define DEFINE_BPF_MAP_UGM(the_map, TYPE, KeyType, ValueType, num_entries, usr, grp, md)   \
+    DEFINE_BPF_MAP_EXT(the_map, TYPE, KeyType, ValueType, num_entries, usr, grp, md,       \
+                       DEFAULT_BPF_MAP_SELINUX_CONTEXT, DEFAULT_BPF_MAP_PIN_SUBDIR, false, \
+                       BPFLOADER_MIN_VER, BPFLOADER_MAX_VER, /*ignore_on_eng*/false,       \
+                       /*ignore_on_user*/false, /*ignore_on_userdebug*/false)
 
 #define DEFINE_BPF_MAP(the_map, TYPE, KeyType, ValueType, num_entries) \
     DEFINE_BPF_MAP_UGM(the_map, TYPE, KeyType, ValueType, num_entries, \
                        DEFAULT_BPF_MAP_UID, AID_ROOT, 0600)
+
+#define DEFINE_BPF_MAP_RO(the_map, TYPE, KeyType, ValueType, num_entries, gid) \
+    DEFINE_BPF_MAP_UGM(the_map, TYPE, KeyType, ValueType, num_entries, \
+                       DEFAULT_BPF_MAP_UID, gid, 0440)
 
 #define DEFINE_BPF_MAP_GWO(the_map, TYPE, KeyType, ValueType, num_entries, gid) \
     DEFINE_BPF_MAP_UGM(the_map, TYPE, KeyType, ValueType, num_entries, \
@@ -217,8 +338,15 @@ static int (*bpf_map_delete_elem_unsafe)(const struct bpf_map_def* map,
     DEFINE_BPF_MAP_UGM(the_map, TYPE, KeyType, ValueType, num_entries, \
                        DEFAULT_BPF_MAP_UID, gid, 0660)
 
+// LLVM eBPF builtins: they directly generate BPF_LD_ABS/BPF_LD_IND (skb may be ignored?)
+unsigned long long load_byte(void* skb, unsigned long long off) asm("llvm.bpf.load.byte");
+unsigned long long load_half(void* skb, unsigned long long off) asm("llvm.bpf.load.half");
+unsigned long long load_word(void* skb, unsigned long long off) asm("llvm.bpf.load.word");
+
 static int (*bpf_probe_read)(void* dst, int size, void* unsafe_ptr) = (void*) BPF_FUNC_probe_read;
 static int (*bpf_probe_read_str)(void* dst, int size, void* unsafe_ptr) = (void*) BPF_FUNC_probe_read_str;
+static int (*bpf_probe_read_user)(void* dst, int size, const void* unsafe_ptr) = (void*)BPF_FUNC_probe_read_user;
+static int (*bpf_probe_read_user_str)(void* dst, int size, const void* unsafe_ptr) = (void*) BPF_FUNC_probe_read_user_str;
 static unsigned long long (*bpf_ktime_get_ns)(void) = (void*) BPF_FUNC_ktime_get_ns;
 static unsigned long long (*bpf_ktime_get_boot_ns)(void) = (void*)BPF_FUNC_ktime_get_boot_ns;
 static int (*bpf_trace_printk)(const char* fmt, int fmt_size, ...) = (void*) BPF_FUNC_trace_printk;
@@ -228,20 +356,24 @@ static unsigned long long (*bpf_get_smp_processor_id)(void) = (void*) BPF_FUNC_g
 static long (*bpf_get_stackid)(void* ctx, void* map, uint64_t flags) = (void*) BPF_FUNC_get_stackid;
 static long (*bpf_get_current_comm)(void* buf, uint32_t buf_size) = (void*) BPF_FUNC_get_current_comm;
 
-#define DEFINE_BPF_PROG_EXT(SECTION_NAME, prog_uid, prog_gid, the_prog, min_kv, max_kv, opt,       \
-                            selinux, pindir)                                                       \
-    const struct bpf_prog_def SECTION("progs") the_prog##_def = {                                  \
-            .uid = (prog_uid),                                                                     \
-            .gid = (prog_gid),                                                                     \
-            .min_kver = (min_kv),                                                                  \
-            .max_kver = (max_kv),                                                                  \
-            .optional = (opt),                                                                     \
-            .bpfloader_min_ver = DEFAULT_BPFLOADER_MIN_VER,                                        \
-            .bpfloader_max_ver = DEFAULT_BPFLOADER_MAX_VER,                                        \
-            .selinux_context = selinux,                                                            \
-            .pin_subdir = pindir,                                                                  \
-    };                                                                                             \
-    SECTION(SECTION_NAME)                                                                          \
+#define DEFINE_BPF_PROG_EXT(SECTION_NAME, prog_uid, prog_gid, the_prog, min_kv, max_kv,  \
+                            min_loader, max_loader, opt, selinux, pindir, ignore_eng,    \
+                            ignore_user, ignore_userdebug)                               \
+    const struct bpf_prog_def SECTION("progs") the_prog##_def = {                        \
+        .uid = (prog_uid),                                                               \
+        .gid = (prog_gid),                                                               \
+        .min_kver = (min_kv),                                                            \
+        .max_kver = (max_kv),                                                            \
+        .optional = (opt),                                                               \
+        .bpfloader_min_ver = (min_loader),                                               \
+        .bpfloader_max_ver = (max_loader),                                               \
+        .selinux_context = (selinux),                                                    \
+        .pin_subdir = (pindir),                                                          \
+        .ignore_on_eng = (ignore_eng),                                                   \
+        .ignore_on_user = (ignore_user),                                                 \
+        .ignore_on_userdebug = (ignore_userdebug),                                       \
+    };                                                                                   \
+    SECTION(SECTION_NAME)                                                                \
     int the_prog
 
 #ifndef DEFAULT_BPF_PROG_SELINUX_CONTEXT
@@ -253,9 +385,11 @@ static long (*bpf_get_current_comm)(void* buf, uint32_t buf_size) = (void*) BPF_
 #endif
 
 #define DEFINE_BPF_PROG_KVER_RANGE_OPT(SECTION_NAME, prog_uid, prog_gid, the_prog, min_kv, max_kv, \
-                                       opt) \
-    DEFINE_BPF_PROG_EXT(SECTION_NAME, prog_uid, prog_gid, the_prog, min_kv, max_kv, opt, \
-                        DEFAULT_BPF_PROG_SELINUX_CONTEXT, DEFAULT_BPF_PROG_PIN_SUBDIR)
+                                       opt)                                                        \
+    DEFINE_BPF_PROG_EXT(SECTION_NAME, prog_uid, prog_gid, the_prog, min_kv, max_kv,                \
+                        BPFLOADER_MIN_VER, BPFLOADER_MAX_VER, opt,                                 \
+                        DEFAULT_BPF_PROG_SELINUX_CONTEXT, DEFAULT_BPF_PROG_PIN_SUBDIR,             \
+                        false, false, false)
 
 // Programs (here used in the sense of functions/sections) marked optional are allowed to fail
 // to load (for example due to missing kernel patches).

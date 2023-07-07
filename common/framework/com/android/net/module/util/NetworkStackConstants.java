@@ -97,6 +97,8 @@ public final class NetworkStackConstants {
     public static final int IPV4_SRC_ADDR_OFFSET = 12;
     public static final int IPV4_DST_ADDR_OFFSET = 16;
     public static final int IPV4_ADDR_LEN = 4;
+    public static final int IPV4_FLAG_MF = 0x2000;
+    public static final int IPV4_FLAG_DF = 0x4000;
     public static final Inet4Address IPV4_ADDR_ALL = makeInet4Address(
             (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff);
     public static final Inet4Address IPV4_ADDR_ANY = makeInet4Address(
@@ -126,6 +128,14 @@ public final class NetworkStackConstants {
     public static final Inet6Address IPV6_ADDR_ALL_HOSTS_MULTICAST =
             (Inet6Address) InetAddresses.parseNumericAddress("ff02::3");
 
+    /**
+     * ICMP constants.
+     *
+     * See also:
+     *     - https://tools.ietf.org/html/rfc792
+     */
+    public static final int ICMP_CHECKSUM_OFFSET = 2;
+    public static final int ICMP_HEADER_LEN = 8;
     /**
      * ICMPv6 constants.
      *
@@ -187,6 +197,8 @@ public final class NetworkStackConstants {
      *     - https://tools.ietf.org/html/rfc768
      */
     public static final int UDP_HEADER_LEN = 8;
+    public static final int UDP_SRCPORT_OFFSET = 0;
+    public static final int UDP_DSTPORT_OFFSET = 2;
     public static final int UDP_LENGTH_OFFSET = 4;
     public static final int UDP_CHECKSUM_OFFSET = 6;
 
@@ -198,6 +210,31 @@ public final class NetworkStackConstants {
      */
     public static final int INFINITE_LEASE = 0xffffffff;
     public static final int DHCP4_CLIENT_PORT = 68;
+    // The maximum length of a DHCP packet that can be constructed.
+    public static final int DHCP_MAX_LENGTH = 1500;
+    public static final int DHCP_MAX_OPTION_LEN = 255;
+
+    /**
+     * DHCPv6 constants.
+     *
+     * See also:
+     *     - https://datatracker.ietf.org/doc/html/rfc8415
+     *     - https://www.iana.org/assignments/dhcpv6-parameters/dhcpv6-parameters.xhtml
+     */
+    public static final int DHCP6_CLIENT_PORT = 546;
+    public static final int DHCP6_SERVER_PORT = 547;
+    public static final Inet6Address ALL_DHCP_RELAY_AGENTS_AND_SERVERS =
+            (Inet6Address) InetAddresses.parseNumericAddress("ff02::1:2");
+    public static final int DHCP6_OPTION_IA_PD = 25;
+    public static final int DHCP6_OPTION_IAPREFIX = 26;
+
+    /**
+     * DNS constants.
+     *
+     * See also:
+     *     - https://datatracker.ietf.org/doc/html/rfc7858#section-3.1
+     */
+    public static final short DNS_OVER_TLS_PORT = 853;
 
     /**
      * IEEE802.11 standard constants.

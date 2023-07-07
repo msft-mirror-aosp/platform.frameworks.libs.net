@@ -49,7 +49,7 @@ public class StructIfaddrMsg extends Struct {
     @Field(order = 4, type = Type.S32)
     public final int index;
 
-    StructIfaddrMsg(short family, short prefixLen, short flags, short scope, int index) {
+    public StructIfaddrMsg(short family, short prefixLen, short flags, short scope, int index) {
         this.family = family;
         this.prefixLen = prefixLen;
         this.flags = flags;
