@@ -17,12 +17,16 @@
 package com.android.net.module.util;
 
 import static android.content.pm.PackageManager.MATCH_SYSTEM_ONLY;
+import static android.provider.DeviceConfig.NAMESPACE_TETHERING;
 
 import static com.android.dx.mockito.inline.extended.ExtendedMockito.doReturn;
 import static com.android.dx.mockito.inline.extended.ExtendedMockito.mockitoSession;
+import static com.android.net.module.util.FeatureVersions.CONNECTIVITY_MODULE_ID;
+import static com.android.net.module.util.FeatureVersions.NETWORK_STACK_MODULE_ID;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.anyInt;
@@ -84,6 +88,8 @@ public class DeviceConfigUtilsTest {
     private static final String TEST_GO_APEX_PACKAGE_NAME = "com.prefix.android.go.tethering";
     private static final String TEST_CONNRES_PACKAGE_NAME =
             "com.prefix.android.connectivity.resources";
+    private static final String TEST_NETWORKSTACK_NAME = "com.prefix.android.networkstack";
+    private static final String TEST_GO_NETWORKSTACK_NAME = "com.prefix.android.go.networkstack";
     private final PackageInfo mPackageInfo = new PackageInfo();
     private final PackageInfo mApexPackageInfo = new PackageInfo();
     private MockitoSession mSession;
@@ -246,10 +252,34 @@ public class DeviceConfigUtilsTest {
     @Test
     public void testFeatureIsEnabledWithException() throws Exception {
         doThrow(NameNotFoundException.class).when(mPm).getPackageInfo(anyString(), anyInt());
+
+        // Feature should be enabled by flag value "1".
+        doReturn("1").when(() -> DeviceConfig.getProperty(eq(TEST_NAME_SPACE),
+                eq(TEST_EXPERIMENT_FLAG)));
+        assertTrue(DeviceConfigUtils.isFeatureEnabled(mContext, TEST_NAME_SPACE,
+                TEST_EXPERIMENT_FLAG));
+        assertTrue(DeviceConfigUtils.isFeatureEnabled(mContext, TEST_NAME_SPACE,
+                TEST_EXPERIMENT_FLAG, TEST_APEX_NAME, false /* defaultEnabled */));
+
+        // Feature should be disabled by flag value "999999999".
+        doReturn("999999999").when(() -> DeviceConfig.getProperty(eq(TEST_NAME_SPACE),
+                eq(TEST_EXPERIMENT_FLAG)));
         assertFalse(DeviceConfigUtils.isFeatureEnabled(mContext, TEST_NAME_SPACE,
                 TEST_EXPERIMENT_FLAG));
         assertFalse(DeviceConfigUtils.isFeatureEnabled(mContext, TEST_NAME_SPACE,
                 TEST_EXPERIMENT_FLAG, TEST_APEX_NAME, false /* defaultEnabled */));
+
+        // Follow defaultEnabled if the flag is not set
+        doReturn(null).when(() -> DeviceConfig.getProperty(eq(TEST_NAME_SPACE),
+                eq(TEST_EXPERIMENT_FLAG)));
+        assertFalse(DeviceConfigUtils.isFeatureEnabled(mContext, TEST_NAME_SPACE,
+                TEST_EXPERIMENT_FLAG, false /* defaultEnabled */));
+        assertTrue(DeviceConfigUtils.isFeatureEnabled(mContext, TEST_NAME_SPACE,
+                TEST_EXPERIMENT_FLAG, true /* defaultEnabled */));
+        assertFalse(DeviceConfigUtils.isFeatureEnabled(mContext, TEST_NAME_SPACE,
+                TEST_EXPERIMENT_FLAG, TEST_APEX_NAME, false /* defaultEnabled */));
+        assertTrue(DeviceConfigUtils.isFeatureEnabled(mContext, TEST_NAME_SPACE,
+                TEST_EXPERIMENT_FLAG, TEST_APEX_NAME, true /* defaultEnabled */));
     }
 
     @Test
@@ -321,5 +351,83 @@ public class DeviceConfigUtilsTest {
         assertEquals(2097, DeviceConfigUtils.getResIntegerConfig(mContext, someResId, 2098));
         doThrow(new Resources.NotFoundException()).when(mResources).getInteger(someResId);
         assertEquals(2098, DeviceConfigUtils.getResIntegerConfig(mContext, someResId, 2098));
+    }
+
+    @Test
+    public void testGetNetworkStackModuleVersionCaching() throws Exception {
+        final PackageInfo networkStackPackageInfo = new PackageInfo();
+        networkStackPackageInfo.setLongVersionCode(TEST_PACKAGE_VERSION);
+        doReturn(networkStackPackageInfo).when(mPm).getPackageInfo(
+                eq(TEST_NETWORKSTACK_NAME), anyInt());
+        assertEquals(TEST_PACKAGE_VERSION,
+                DeviceConfigUtils.getNetworkStackModuleVersion(mContext));
+
+        assertEquals(TEST_PACKAGE_VERSION,
+                DeviceConfigUtils.getNetworkStackModuleVersion(mContext));
+        // Package info is only queried once
+        verify(mPm, times(1)).getPackageInfo(anyString(), anyInt());
+        verify(mContext, never()).getPackageName();
+    }
+
+    @Test
+    public void testGetNetworkStackModuleVersionOnNonMainline() {
+        assertEquals(DeviceConfigUtils.DEFAULT_PACKAGE_VERSION,
+                DeviceConfigUtils.getNetworkStackModuleVersion(mContext));
+    }
+
+    @Test
+    public void testGetNetworkStackModuleVersion() throws Exception {
+        final PackageInfo networkStackPackageInfo = new PackageInfo();
+        final PackageInfo goNetworkStackPackageInfo = new PackageInfo();
+        networkStackPackageInfo.setLongVersionCode(TEST_PACKAGE_VERSION);
+        goNetworkStackPackageInfo.setLongVersionCode(TEST_PACKAGE_VERSION + 1);
+        doReturn(goNetworkStackPackageInfo).when(mPm).getPackageInfo(
+                eq(TEST_NETWORKSTACK_NAME), anyInt());
+        // Verify the returned value is go module version.
+        assertEquals(TEST_PACKAGE_VERSION + 1,
+                DeviceConfigUtils.getNetworkStackModuleVersion(mContext));
+    }
+
+    @Test
+    public void testIsFeatureSupported_networkStackFeature() throws Exception {
+        // Supported for DEFAULT_PACKAGE_VERSION
+        assertTrue(DeviceConfigUtils.isFeatureSupported(
+                mContext, TEST_PACKAGE_VERSION + NETWORK_STACK_MODULE_ID));
+
+        final PackageInfo networkStackPackageInfo = new PackageInfo();
+        networkStackPackageInfo.setLongVersionCode(TEST_PACKAGE_VERSION);
+        doReturn(networkStackPackageInfo).when(mPm).getPackageInfo(
+                eq(TEST_NETWORKSTACK_NAME), anyInt());
+
+        assertTrue(DeviceConfigUtils.isFeatureSupported(
+                mContext, TEST_PACKAGE_VERSION + NETWORK_STACK_MODULE_ID));
+        assertFalse(DeviceConfigUtils.isFeatureSupported(
+                mContext, TEST_PACKAGE_VERSION + NETWORK_STACK_MODULE_ID + 1));
+    }
+
+    @Test
+    public void testIsFeatureSupported_tetheringFeature() throws Exception {
+        assertTrue(DeviceConfigUtils.isFeatureSupported(
+                mContext, TEST_PACKAGE_VERSION + CONNECTIVITY_MODULE_ID));
+        // Return false because feature requires a future version.
+        assertFalse(DeviceConfigUtils.isFeatureSupported(
+                mContext, 889900000L + CONNECTIVITY_MODULE_ID));
+    }
+
+    @Test
+    public void testIsFeatureSupported_illegalModule() throws Exception {
+        assertThrows(IllegalArgumentException.class,
+                () -> DeviceConfigUtils.isFeatureSupported(mContext, TEST_PACKAGE_VERSION));
+    }
+
+    @Test
+    public void testIsTetheringFeatureForceDisabled() throws Exception {
+        doReturn("0").when(() -> DeviceConfig.getProperty(
+                eq(NAMESPACE_TETHERING), eq(TEST_EXPERIMENT_FLAG)));
+        assertFalse(DeviceConfigUtils.isTetheringFeatureForceDisabled(TEST_EXPERIMENT_FLAG));
+
+        doReturn(TEST_FLAG_VALUE_STRING).when(
+                () -> DeviceConfig.getProperty(eq(NAMESPACE_TETHERING), eq(TEST_EXPERIMENT_FLAG)));
+        assertTrue(DeviceConfigUtils.isTetheringFeatureForceDisabled(TEST_EXPERIMENT_FLAG));
     }
 }
