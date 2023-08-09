@@ -17,6 +17,7 @@
 package com.android.net.module.util;
 
 import android.net.InetAddresses;
+import android.net.IpPrefix;
 
 import java.net.Inet4Address;
 import java.net.Inet6Address;
@@ -99,6 +100,8 @@ public final class NetworkStackConstants {
     public static final int IPV4_ADDR_LEN = 4;
     public static final int IPV4_FLAG_MF = 0x2000;
     public static final int IPV4_FLAG_DF = 0x4000;
+    // getSockOpt() for v4 MTU
+    public static final int IP_MTU = 14;
     public static final Inet4Address IPV4_ADDR_ALL = makeInet4Address(
             (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff);
     public static final Inet4Address IPV4_ADDR_ANY = makeInet4Address(
@@ -108,6 +111,12 @@ public final class NetworkStackConstants {
             (byte) 0, (byte) 0, (byte) 0, (byte) 0,
             (byte) 0, (byte) 0, (byte) 0, (byte) 0,
             (byte) 0, (byte) 0, (byte) 0, (byte) 0 });
+
+    /**
+     * CLAT constants
+     */
+    public static final IpPrefix CLAT_PREFIX = new IpPrefix("192.0.0.0/29");
+
     /**
      * IPv6 constants.
      *
@@ -121,6 +130,9 @@ public final class NetworkStackConstants {
     public static final int IPV6_SRC_ADDR_OFFSET = 8;
     public static final int IPV6_DST_ADDR_OFFSET = 24;
     public static final int IPV6_MIN_MTU = 1280;
+    public static final int IPV6_FRAGMENT_HEADER_LEN = 8;
+    // getSockOpt() for v6 MTU
+    public static final int IPV6_MTU = 24;
     public static final Inet6Address IPV6_ADDR_ALL_NODES_MULTICAST =
             (Inet6Address) InetAddresses.parseNumericAddress("ff02::1");
     public static final Inet6Address IPV6_ADDR_ALL_ROUTERS_MULTICAST =
@@ -140,6 +152,7 @@ public final class NetworkStackConstants {
      * ICMPv6 constants.
      *
      * See also:
+     *     - https://tools.ietf.org/html/rfc4191
      *     - https://tools.ietf.org/html/rfc4443
      *     - https://tools.ietf.org/html/rfc4861
      */
@@ -157,6 +170,7 @@ public final class NetworkStackConstants {
     public static final int ICMPV6_ND_OPTION_TLLA  = 2;
     public static final int ICMPV6_ND_OPTION_PIO   = 3;
     public static final int ICMPV6_ND_OPTION_MTU   = 5;
+    public static final int ICMPV6_ND_OPTION_RIO   = 24;
     public static final int ICMPV6_ND_OPTION_RDNSS = 25;
     public static final int ICMPV6_ND_OPTION_PREF64 = 38;
 
