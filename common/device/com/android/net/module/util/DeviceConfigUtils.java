@@ -207,8 +207,9 @@ public final class DeviceConfigUtils {
      *                       null.
      * @return true if this feature is enabled, or false if disabled.
      */
-    public static boolean isFeatureEnabled(@NonNull Context context, @NonNull String namespace,
-            @NonNull String name, @NonNull String moduleName, boolean defaultEnabled) {
+    public static boolean isTetheringFeatureEnabled(@NonNull Context context,
+            @NonNull String namespace, @NonNull String name, @NonNull String moduleName,
+            boolean defaultEnabled) {
         // TODO: migrate callers to a non-generic isTetheringFeatureEnabled method.
         if (!TETHERING_MODULE_NAME.equals(moduleName)) {
             throw new IllegalArgumentException(
@@ -335,15 +336,19 @@ public final class DeviceConfigUtils {
 
     /**
      * Check whether one specific experimental feature in tethering module from {@link DeviceConfig}
-     * is disabled by setting a non-zero value in the property.
+     * is not disabled. Feature can be disabled by setting a non-zero value in the property.
+     * If the feature is enabled by default and disabled by flag push (kill switch), this method
+     * should be used.
+     * If the feature is disabled by default and enabled by flag push,
+     * {@link #isTetheringFeatureEnabled} should be used.
      *
      * @param name The name of the property to look up.
-     * @return true if this feature is force disabled, or false if not disabled.
+     * @return true if this feature is enabled, or false if disabled.
      */
-    public static boolean isTetheringFeatureForceDisabled(String name) {
+    public static boolean isTetheringFeatureNotChickenedOut(String name) {
         final int propertyVersion = getDeviceConfigPropertyInt(NAMESPACE_TETHERING, name,
                 0 /* default value */);
-        return propertyVersion != 0;
+        return propertyVersion == 0;
     }
 
     /**
