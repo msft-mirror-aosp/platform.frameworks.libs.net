@@ -17,6 +17,7 @@
 package com.android.net.module.util;
 
 import static android.content.pm.PackageManager.MATCH_SYSTEM_ONLY;
+import static android.provider.DeviceConfig.NAMESPACE_CONNECTIVITY;
 import static android.provider.DeviceConfig.NAMESPACE_TETHERING;
 
 import static com.android.dx.mockito.inline.extended.ExtendedMockito.doReturn;
@@ -233,7 +234,7 @@ public class DeviceConfigUtilsTest {
                 eq(TEST_EXPERIMENT_FLAG)));
         assertTrue(DeviceConfigUtils.isFeatureEnabled(mContext, TEST_NAME_SPACE,
                 TEST_EXPERIMENT_FLAG));
-        assertTrue(DeviceConfigUtils.isFeatureEnabled(mContext, TEST_NAME_SPACE,
+        assertTrue(DeviceConfigUtils.isTetheringFeatureEnabled(mContext, TEST_NAME_SPACE,
                 TEST_EXPERIMENT_FLAG, TEST_APEX_NAME, false /* defaultEnabled */));
     }
 
@@ -243,9 +244,9 @@ public class DeviceConfigUtilsTest {
                 eq(TEST_EXPERIMENT_FLAG)));
         assertFalse(DeviceConfigUtils.isFeatureEnabled(mContext, TEST_NAME_SPACE,
                 TEST_EXPERIMENT_FLAG));
-        assertFalse(DeviceConfigUtils.isFeatureEnabled(mContext, TEST_NAME_SPACE,
+        assertFalse(DeviceConfigUtils.isTetheringFeatureEnabled(mContext, TEST_NAME_SPACE,
                 TEST_EXPERIMENT_FLAG, TEST_APEX_NAME, false /* defaultEnabled */));
-        assertTrue(DeviceConfigUtils.isFeatureEnabled(mContext, TEST_NAME_SPACE,
+        assertTrue(DeviceConfigUtils.isTetheringFeatureEnabled(mContext, TEST_NAME_SPACE,
                 TEST_EXPERIMENT_FLAG, TEST_APEX_NAME, true /* defaultEnabled */));
     }
 
@@ -258,7 +259,7 @@ public class DeviceConfigUtilsTest {
                 eq(TEST_EXPERIMENT_FLAG)));
         assertTrue(DeviceConfigUtils.isFeatureEnabled(mContext, TEST_NAME_SPACE,
                 TEST_EXPERIMENT_FLAG));
-        assertTrue(DeviceConfigUtils.isFeatureEnabled(mContext, TEST_NAME_SPACE,
+        assertTrue(DeviceConfigUtils.isTetheringFeatureEnabled(mContext, TEST_NAME_SPACE,
                 TEST_EXPERIMENT_FLAG, TEST_APEX_NAME, false /* defaultEnabled */));
 
         // Feature should be disabled by flag value "999999999".
@@ -266,7 +267,7 @@ public class DeviceConfigUtilsTest {
                 eq(TEST_EXPERIMENT_FLAG)));
         assertFalse(DeviceConfigUtils.isFeatureEnabled(mContext, TEST_NAME_SPACE,
                 TEST_EXPERIMENT_FLAG));
-        assertFalse(DeviceConfigUtils.isFeatureEnabled(mContext, TEST_NAME_SPACE,
+        assertFalse(DeviceConfigUtils.isTetheringFeatureEnabled(mContext, TEST_NAME_SPACE,
                 TEST_EXPERIMENT_FLAG, TEST_APEX_NAME, false /* defaultEnabled */));
 
         // Follow defaultEnabled if the flag is not set
@@ -276,9 +277,9 @@ public class DeviceConfigUtilsTest {
                 TEST_EXPERIMENT_FLAG, false /* defaultEnabled */));
         assertTrue(DeviceConfigUtils.isFeatureEnabled(mContext, TEST_NAME_SPACE,
                 TEST_EXPERIMENT_FLAG, true /* defaultEnabled */));
-        assertFalse(DeviceConfigUtils.isFeatureEnabled(mContext, TEST_NAME_SPACE,
+        assertFalse(DeviceConfigUtils.isTetheringFeatureEnabled(mContext, TEST_NAME_SPACE,
                 TEST_EXPERIMENT_FLAG, TEST_APEX_NAME, false /* defaultEnabled */));
-        assertTrue(DeviceConfigUtils.isFeatureEnabled(mContext, TEST_NAME_SPACE,
+        assertTrue(DeviceConfigUtils.isTetheringFeatureEnabled(mContext, TEST_NAME_SPACE,
                 TEST_EXPERIMENT_FLAG, TEST_APEX_NAME, true /* defaultEnabled */));
     }
 
@@ -293,14 +294,14 @@ public class DeviceConfigUtilsTest {
 
         assertFalse(DeviceConfigUtils.isFeatureEnabled(mContext, TEST_NAME_SPACE,
                 TEST_EXPERIMENT_FLAG));
-        assertFalse(DeviceConfigUtils.isFeatureEnabled(mContext, TEST_NAME_SPACE,
+        assertFalse(DeviceConfigUtils.isTetheringFeatureEnabled(mContext, TEST_NAME_SPACE,
                 TEST_EXPERIMENT_FLAG, TEST_APEX_NAME, false /* defaultEnabled */));
-        assertTrue(DeviceConfigUtils.isFeatureEnabled(mContext, TEST_NAME_SPACE,
+        assertTrue(DeviceConfigUtils.isTetheringFeatureEnabled(mContext, TEST_NAME_SPACE,
                 TEST_EXPERIMENT_FLAG, TEST_APEX_NAME, true /* defaultEnabled */));
 
         doReturn(TEST_FLAG_VALUE_STRING).when(() -> DeviceConfig.getProperty(eq(TEST_NAME_SPACE),
                 eq(TEST_EXPERIMENT_FLAG)));
-        assertTrue(DeviceConfigUtils.isFeatureEnabled(mContext, TEST_NAME_SPACE,
+        assertTrue(DeviceConfigUtils.isTetheringFeatureEnabled(mContext, TEST_NAME_SPACE,
                 TEST_EXPERIMENT_FLAG, TEST_APEX_NAME, false /* defaultEnabled */));
     }
 
@@ -323,9 +324,9 @@ public class DeviceConfigUtilsTest {
     public void testFeatureIsEnabledCaching_APEX() throws Exception {
         doReturn(TEST_FLAG_VALUE_STRING).when(() -> DeviceConfig.getProperty(eq(TEST_NAME_SPACE),
                 eq(TEST_EXPERIMENT_FLAG)));
-        assertTrue(DeviceConfigUtils.isFeatureEnabled(mContext, TEST_NAME_SPACE,
+        assertTrue(DeviceConfigUtils.isTetheringFeatureEnabled(mContext, TEST_NAME_SPACE,
                 TEST_EXPERIMENT_FLAG, TEST_APEX_NAME, false /* defaultEnabled */));
-        assertTrue(DeviceConfigUtils.isFeatureEnabled(mContext, TEST_NAME_SPACE,
+        assertTrue(DeviceConfigUtils.isTetheringFeatureEnabled(mContext, TEST_NAME_SPACE,
                 TEST_EXPERIMENT_FLAG, TEST_APEX_NAME, false /* defaultEnabled */));
 
         // Package info is only queried once
@@ -421,13 +422,25 @@ public class DeviceConfigUtilsTest {
     }
 
     @Test
-    public void testIsTetheringFeatureForceDisabled() throws Exception {
+    public void testIsTetheringFeatureNotChickenedOut() throws Exception {
         doReturn("0").when(() -> DeviceConfig.getProperty(
                 eq(NAMESPACE_TETHERING), eq(TEST_EXPERIMENT_FLAG)));
-        assertFalse(DeviceConfigUtils.isTetheringFeatureForceDisabled(TEST_EXPERIMENT_FLAG));
+        assertTrue(DeviceConfigUtils.isTetheringFeatureNotChickenedOut(TEST_EXPERIMENT_FLAG));
 
         doReturn(TEST_FLAG_VALUE_STRING).when(
                 () -> DeviceConfig.getProperty(eq(NAMESPACE_TETHERING), eq(TEST_EXPERIMENT_FLAG)));
-        assertTrue(DeviceConfigUtils.isTetheringFeatureForceDisabled(TEST_EXPERIMENT_FLAG));
+        assertFalse(DeviceConfigUtils.isTetheringFeatureNotChickenedOut(TEST_EXPERIMENT_FLAG));
+    }
+
+    @Test
+    public void testIsNetworkStackFeatureNotChickenedOut() throws Exception {
+        doReturn("0").when(() -> DeviceConfig.getProperty(
+                eq(NAMESPACE_CONNECTIVITY), eq(TEST_EXPERIMENT_FLAG)));
+        assertTrue(DeviceConfigUtils.isNetworkStackFeatureNotChickenedOut(TEST_EXPERIMENT_FLAG));
+
+        doReturn(TEST_FLAG_VALUE_STRING).when(
+                () -> DeviceConfig.getProperty(eq(NAMESPACE_CONNECTIVITY),
+                                               eq(TEST_EXPERIMENT_FLAG)));
+        assertFalse(DeviceConfigUtils.isNetworkStackFeatureNotChickenedOut(TEST_EXPERIMENT_FLAG));
     }
 }

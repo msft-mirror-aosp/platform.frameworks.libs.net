@@ -17,6 +17,7 @@
 package com.android.net.module.util;
 
 import static android.content.pm.PackageManager.MATCH_SYSTEM_ONLY;
+import static android.provider.DeviceConfig.NAMESPACE_CONNECTIVITY;
 import static android.provider.DeviceConfig.NAMESPACE_TETHERING;
 
 import static com.android.net.module.util.FeatureVersions.CONNECTIVITY_MODULE_ID;
@@ -207,8 +208,9 @@ public final class DeviceConfigUtils {
      *                       null.
      * @return true if this feature is enabled, or false if disabled.
      */
-    public static boolean isFeatureEnabled(@NonNull Context context, @NonNull String namespace,
-            @NonNull String name, @NonNull String moduleName, boolean defaultEnabled) {
+    public static boolean isTetheringFeatureEnabled(@NonNull Context context,
+            @NonNull String namespace, @NonNull String name, @NonNull String moduleName,
+            boolean defaultEnabled) {
         // TODO: migrate callers to a non-generic isTetheringFeatureEnabled method.
         if (!TETHERING_MODULE_NAME.equals(moduleName)) {
             throw new IllegalArgumentException(
@@ -334,16 +336,42 @@ public final class DeviceConfigUtils {
     }
 
     /**
-     * Check whether one specific experimental feature in tethering module from {@link DeviceConfig}
-     * is disabled by setting a non-zero value in the property.
+     * Check whether one specific experimental feature in specific namespace from
+     * {@link DeviceConfig} is not disabled. Feature can be disabled by setting a non-zero
+     * value in the property. If the feature is enabled by default and disabled by flag push
+     * (kill switch), this method should be used. If the feature is disabled by default and
+     * enabled by flag push, {@link #isFeatureEnabled} should be used.
      *
+     * @param namespace The namespace containing the property to look up.
      * @param name The name of the property to look up.
-     * @return true if this feature is force disabled, or false if not disabled.
+     * @return true if this feature is enabled, or false if disabled.
      */
-    public static boolean isTetheringFeatureForceDisabled(String name) {
-        final int propertyVersion = getDeviceConfigPropertyInt(NAMESPACE_TETHERING, name,
+    private static boolean isFeatureNotChickenedOut(String namespace, String name) {
+        final int propertyVersion = getDeviceConfigPropertyInt(namespace, name,
                 0 /* default value */);
-        return propertyVersion != 0;
+        return propertyVersion == 0;
+    }
+
+    /**
+     * Check whether one specific experimental feature in Tethering module from {@link DeviceConfig}
+     * is not disabled.
+     *
+     * @param name The name of the property in tethering module to look up.
+     * @return true if this feature is enabled, or false if disabled.
+     */
+    public static boolean isTetheringFeatureNotChickenedOut(String name) {
+        return isFeatureNotChickenedOut(NAMESPACE_TETHERING, name);
+    }
+
+    /**
+     * Check whether one specific experimental feature in NetworkStack module from
+     * {@link DeviceConfig} is not disabled.
+     *
+     * @param name The name of the property in NetworkStack module to look up.
+     * @return true if this feature is enabled, or false if disabled.
+     */
+    public static boolean isNetworkStackFeatureNotChickenedOut(String name) {
+        return isFeatureNotChickenedOut(NAMESPACE_CONNECTIVITY, name);
     }
 
     /**
