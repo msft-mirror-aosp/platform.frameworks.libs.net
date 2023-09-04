@@ -1,6 +1,0 @@
-# Bug template url: http://b/new?component=31808
-# TODO: move bug template config to common owners file once b/226427845 is resolved
-set noparent
-# OWNERS block for code move: b/296014682
-motomuman@google.com
-#file:platform/packages/modules/Connectivity:main:/OWNERS_core_networking
