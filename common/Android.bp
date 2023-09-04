@@ -34,6 +34,7 @@ package {
 java_library {
   name: "net-utils-device-common",
   srcs: [
+      "device/com/android/net/module/util/arp/ArpPacket.java",
       "device/com/android/net/module/util/DeviceConfigUtils.java",
       "device/com/android/net/module/util/DomainUtils.java",
       "device/com/android/net/module/util/FdEventsReader.java",
@@ -245,6 +246,7 @@ java_library {
         "framework-annotations-lib",
         "framework-connectivity.stubs.module_lib",
         "framework-connectivity-t.stubs.module_lib",
+        "framework-location.stubs.module_lib",
     ],
     jarjar_rules: "jarjar-rules-shared.txt",
     visibility: [
