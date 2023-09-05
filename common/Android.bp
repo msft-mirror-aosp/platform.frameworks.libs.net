@@ -34,12 +34,15 @@ package {
 java_library {
   name: "net-utils-device-common",
   srcs: [
+      "device/com/android/net/module/util/arp/ArpPacket.java",
       "device/com/android/net/module/util/DeviceConfigUtils.java",
+      "device/com/android/net/module/util/DomainUtils.java",
       "device/com/android/net/module/util/FdEventsReader.java",
       "device/com/android/net/module/util/NetworkMonitorUtils.java",
       "device/com/android/net/module/util/PacketReader.java",
       "device/com/android/net/module/util/SharedLog.java",
       "device/com/android/net/module/util/SocketUtils.java",
+      "device/com/android/net/module/util/FeatureVersions.java",
       // This library is used by system modules, for which the system health impact of Kotlin
       // has not yet been evaluated. Annotations may need jarjar'ing.
       // "src_devicecommon/**/*.kt",
@@ -243,6 +246,7 @@ java_library {
         "framework-annotations-lib",
         "framework-connectivity.stubs.module_lib",
         "framework-connectivity-t.stubs.module_lib",
+        "framework-location.stubs.module_lib",
     ],
     jarjar_rules: "jarjar-rules-shared.txt",
     visibility: [
